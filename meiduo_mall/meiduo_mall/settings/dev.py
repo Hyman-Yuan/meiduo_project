@@ -10,11 +10,27 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.11/ref/settings/
 """
 
-import os
+import os,sys
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+print(BASE_DIR)
+# print(sys.path)
+sys.path.insert(0,os.path.join(BASE_DIR,'apps'))
+print(sys.path)
 
+'''['/home/python/Desktop/meiduo_project/meiduo_mall/meiduo_mall/apps',
+    '/home/python/Desktop/meiduo_project/meiduo_mall',
+    '/home/python/Desktop/meiduo_project/meiduo_mall', 
+    '/snap/pycharm-professional/183/plugins/python/helpers/pycharm_display',
+    '/home/python/.virtualenvs/meiduo_project/lib/python36.zip',
+    '/home/python/.virtualenvs/meiduo_project/lib/python3.6',
+    '/home/python/.virtualenvs/meiduo_project/lib/python3.6/lib-dynload',
+    '/usr/lib/python3.6', 
+    '/home/python/.virtualenvs/meiduo_project/lib/python3.6/site-packages', 
+    '/snap/pycharm-professional/183/plugins/python/helpers/pycharm_matplotlib_backend']
+/home/python/Desktop/meiduo_project/meiduo_mall/meiduo_mall
+['/home/python/Desktop/meiduo_project/meiduo_mall/meiduo_mall/apps', '/home/'''
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
@@ -37,6 +53,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'user',
 ]
 
 MIDDLEWARE = [
@@ -57,7 +74,7 @@ TEMPLATES = [
         'DIRS': [os.path.join(BASE_DIR,'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
-            'environment':'meiduo_mall.utils.jinja2_env.jinja2_environment',
+            'environment': 'meiduo_mall.utils.jinja2_env.jinja2_environment',
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
@@ -121,14 +138,14 @@ USE_TZ = True
 
 CACHES = {
     'default':{
-        'BACKENDS':'django_redis.cache.RedisCache',
+        'BACKEND':'django_redis.cache.RedisCache',
         'LOCATION':'redis://127.0.0.1:6379/0',
         'OPTIONS':{
             'CLIENT_CLASS':'django_redis.client.DefaultClient'
         }
     },
     'session':{
-        'BACKENDS':'django_redis.cache.RedisCache',
+        'BACKEND':'django_redis.cache.RedisCache',
         'LOCATION':'redis://127.0.0.1:6379/1',
         'OPTIONS':{
             'CLIENT_CLASS':'django_redis.client.DefaultClient'
@@ -149,6 +166,7 @@ STATICFILES_DIRS = [
 ]
 
 # 配置项目日志文件
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,  # 是否禁用已经存在的日志器
