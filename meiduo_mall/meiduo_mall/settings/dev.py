@@ -14,10 +14,9 @@ import os,sys
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-print(BASE_DIR)
-# print(sys.path)
+
 sys.path.insert(0,os.path.join(BASE_DIR,'apps'))
-print(sys.path)
+
 
 '''['/home/python/Desktop/meiduo_project/meiduo_mall/meiduo_mall/apps',
     '/home/python/Desktop/meiduo_project/meiduo_mall',
