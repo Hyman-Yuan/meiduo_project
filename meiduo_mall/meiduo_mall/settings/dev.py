@@ -52,7 +52,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'user',
+    'user.apps.UserConfig',
 ]
 
 MIDDLEWARE = [
@@ -125,9 +125,12 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/1.11/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
-
-TIME_ZONE = 'UTC'
+# LANGUAGE_CODE = 'en-us'
+#
+# TIME_ZONE = 'UTC'
+# alert the language and time in system
+LANGUAGE_CODE = 'zh-hans' # 使用中国语言
+TIME_ZONE = 'Asia/Shanghai' # 使用中国上海时间
 
 USE_I18N = True
 
@@ -206,3 +209,7 @@ LOGGING = {
         },
     }
 }
+
+# 修改Django用户认证模型类
+AUTH_USER_MODEL = 'user.User'
+
