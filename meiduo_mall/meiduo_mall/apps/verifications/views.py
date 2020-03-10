@@ -8,6 +8,7 @@ from random import randint
 from meiduo_mall.utils.response_code import RETCODE
 from meiduo_mall.libs.captcha.captcha import captcha
 from meiduo_mall.libs.yuntongxun.sms import CCP
+from celery_tasks.sms import tasks
 from . import constant
 
 
@@ -76,12 +77,15 @@ class SMSCodeView(View):
         redis_obj.delete(uuid)                    # 获取到图形验证码后,删除redis中的图形验证码.避免图形验证码重复使用
         if image_verify_code is None:
             return http.JsonResponse({'code': RETCODE.IMAGECODEERR, 'errmsg': '图形验证码已过期'})
-        # 对比图形验证码
+        # 对比图形验证码  将从redis中拿到的 bytes 类型数据解码
         image_code_server = image_verify_code.decode()
+        # 验证码不区分大小写
         if image_code_client.upper() != image_code_server.upper():
             return http.HttpResponseForbidden({'code':RETCODE.IMAGECODEERR,'errmsg':'图形验证码填写错误'})
         # 生成短信验证码：生成6位数验证码
         sms_verify_code = "%06d" % randint(0,999999)
+
+        # 在控制台输出验证码
         print(sms_verify_code)
         logger.info(sms_verify_code)
 
@@ -97,7 +101,17 @@ class SMSCodeView(View):
         pl.setex(mobile, constant.MOBILE_EXPIRETIME, constant.MOBILE_FREQUENCY)
         pl.execute()
 
-        # CCP.send_template_sms(to=mobile, datas=[sms_verify_code,constant.SMS_CODE_EXPIRETIME // 60 ], temp_id=1)
+        # 生成验证码后使用第三方工具发送验证码
+        #  CCP.send_template_sms(to=mobile, datas=[sms_verify_code,constant.SMS_CODE_EXPIRETIME // 60 ], temp_id=1)
+
+        # 直接调用celery异步任务 默认在当前线程执行
+        # tasks.ccp_send_sms_code(mobile,sms_verify_code)
+
+        # 将任务传递到 celery_tasks 的任务队列中.
+        # 当前任务是否执行,与当前线程无关,取决 celer_tasks 的服务是否开启
+        # celer_tasks的服务未开启时,任务会在 任务队列(redis[7]) 中等待,一旦服务开启,立即执行该任务
+        tasks.ccp_send_sms_code.delay(mobile,sms_verify_code)
+
         # 响应结果
         return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK'})
 
