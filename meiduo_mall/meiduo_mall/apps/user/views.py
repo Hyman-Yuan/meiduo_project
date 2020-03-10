@@ -1,10 +1,13 @@
 from django.shortcuts import render
 from django.views import View
-# Create your views here.
-from user.models import User
 from django import http
-import re
 from django.contrib.auth import login
+from django_redis import get_redis_connection
+
+import re
+
+from user.models import User
+from meiduo_mall.utils.response_code import RETCODE
 
 class RegisterView(View):
 
@@ -28,17 +31,13 @@ class RegisterView(View):
         """
         """AttributeError: 'QueryDict' object has no attribute 'username'"""
         # username = query_dict.username
-        # password = query_dict.password
-        # password2 = query_dict.password2
-        # mobile = query_dict.mobile
-        # # image_code = query_dict.image_code
-        # sms_code = query_dict.sms_code
-        # allow = query_dict.allow
+
         username = query_dict.get('username')
         password = query_dict.get('password')
         password2 = query_dict.get('password2')
         mobile = query_dict.get('mobile')
         image_code = query_dict.get('image_code')
+        # TODO: Verify the SMS verification code(校验短信验证码)
         sms_code = query_dict.get('sms_code')
         allow = query_dict.get('allow')
 
@@ -53,7 +52,6 @@ class RegisterView(View):
             return http.HttpResponseForbidden('两次输入的密码不一致')
         if not re.match(r'^1[3-9]\d{9}$',mobile):
             return http.HttpResponseForbidden('请输入正确格式的手机号')
-
         # create user by the original ways
         # 创建用户
         # user = User.objects.create(username=username,password=password,mobile=mobile)
@@ -62,6 +60,16 @@ class RegisterView(View):
         # 保存.提交到 mysql数据库
         # user.save()
 
+
+        # TODO: 短信验证码校验逻辑,后期补充
+        redis_cli = get_redis_connection('verify_codes')
+        # !!! redis中存储的数据是byte类型,must decode()
+        sms_code_server = redis_cli.get('sms_%s' % mobile).decode()
+        if sms_code_server is None:
+            return render(request,'register.html',{'error_image_code':'短信验证码已过期'})
+        if sms_code != sms_code_server:
+            return render(request, 'register.html', {'error_image_code': '短信验证码错误'})
+
         # AbstractUser中自定义了 UserManager(),管理器中实现了 create_user方法,该方法将 create,set_password,save 进行了封装,简化了代码
         #  # notice the parameters and attributes in User class.
         user = User.objects.create_user(username=username,password=password,user_mobile=mobile)
@@ -69,5 +77,31 @@ class RegisterView(View):
         login(request,user)
 
         return http.HttpResponse('Register successfull')
+
+
+
+#  /usernames/(?P<username>[a-zA-Z0-9_-]{5,20})/count/
+# 当鼠标点击用户名输入框之外的区域,浏览器会再次发送一个请求
+# register.html :
+#               <input type="text" name="username" id="user_name" v-model="username" @blur="check_username">
+# register.js  check_username:
+#              var url = this.host + '/usernames/' + this.username + '/count/';
+#                 axios.get(url, {responseType: 'json'})
+
+class UsernameCountView(View):
+        # 类视图中 get方法 传入参数时,取决于 正则组 的的写法
+        # 正则组 未取别名 则按位置传参,如果有别名,则按正则组的别名进行传参
+    def get(self,request,username):
+        # ORM模型 增删改查  通过 模型类 实现的,通过用户名查询数据库中该用户名是否存在
+        count = User.objects.filter(username=username).count()
+
+        return http.JsonResponse({'code':RETCODE.OK,'errmsg':'OK','count':count})
+
+# be similar to UsernameCountView
+class MobileCountView(View):
+
+    def get(self,request,mobile):
+        count = User.objects.filter(user_mobile=mobile).count()
+        return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK', 'count': count})
 
 
