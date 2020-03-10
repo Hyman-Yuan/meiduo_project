@@ -95,9 +95,9 @@ class SMSCodeView(View):
         # # 发送短信验证码
         pl.setex('sms_%s' % mobile, constant.SMS_CODE_EXPIRETIME, sms_verify_code)
         pl.setex(mobile, constant.MOBILE_EXPIRETIME, constant.MOBILE_FREQUENCY)
+        pl.execute()
 
-
-        CCP.send_template_sms(to=mobile, datas=[sms_verify_code,constant.SMS_CODE_EXPIRETIME // 60 ], temp_id=1)
+        # CCP.send_template_sms(to=mobile, datas=[sms_verify_code,constant.SMS_CODE_EXPIRETIME // 60 ], temp_id=1)
         # 响应结果
         return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK'})
 
