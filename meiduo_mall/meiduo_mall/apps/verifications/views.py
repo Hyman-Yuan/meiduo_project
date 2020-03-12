@@ -48,8 +48,6 @@ class ImageCodeView(View):
         # return http.HttpResponse(image_code_bytes, content_type='image/jpeg')
 
 
-
-
 # // 向后端接口发送请求，让后端发送短信验证码
 #    var url = this.host + '/sms_codes/' + this.mobile + '/?image_code=' + this.image_code + '&uuid=' + this.uuid;
 class SMSCodeView(View):

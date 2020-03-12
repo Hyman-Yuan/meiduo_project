@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.views import View
 from django import http
-from django.contrib.auth import login
+from django.contrib.auth import login, authenticate
 from django_redis import get_redis_connection
 
 import re
@@ -78,8 +78,6 @@ class RegisterView(View):
 
         return http.HttpResponse('Register successfull')
 
-
-
 #  /usernames/(?P<username>[a-zA-Z0-9_-]{5,20})/count/
 # 当鼠标点击用户名输入框之外的区域,浏览器会再次发送一个请求
 # register.html :
@@ -103,5 +101,53 @@ class MobileCountView(View):
     def get(self,request,mobile):
         count = User.objects.filter(user_mobile=mobile).count()
         return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK', 'count': count})
+
+
+class LoginView(View):
+    '''登录功能'''
+    def get(self,request):
+        return render(request,'login.html')   # 登录页面
+
+    def post(self,request):
+
+        query_dict = request.POST
+        username = query_dict.get('username')
+        password = query_dict.get('password')
+        remembered = query_dict.get('remembered')    # # 记住登录,非必勾项  勾选时'on' 未勾选时 None
+        if not all([username,password]):
+            return http.HttpResponseForbidden('error')
+
+
+        # # login by username
+        # # method 1
+        # try:
+        #     user = User.objects.get(username=username)
+        #     # user.check_password(password): user 模型类 中实现校验密码的一种方法
+        #     if not user.check_password(password):
+        #         #结响应html的js请求
+        #         return render(request,'login.html',{'account_errmsg':'用户名或密码不正确'})
+        # except User.DoesNotExist:
+        #     return render(request, 'login.html', {'account_errmsg': '用户名或密码不正确'})
+
+        # # method 2
+        # # 用户认证,通过认证返回当前user模型否则返回None!! attention the result of authenticate (user module or None)
+        user = authenticate(request,username=username,password=password)
+        if not user:
+            return render(request, 'login.html', {'account_errmsg': '用户名或密码不正确'})
+        #
+
+        # keep status,default two weeks
+        login(request,user)
+        # session 设置为0 和cookie的None都代表关闭浏览器就删除
+        if remembered is None:
+            request.session.set_expiry(0)  # 状态保持 不勾选,则session 设置0 或者 cookie 设置为None,cookie && session 的有效期截止于关闭浏览器
+        else:
+            request.session.set_expiry(3600*24*7)  # 勾选状态保持,设置自定义 的 用户登录状态保持的时间
+        return http.HttpResponse('login successful')
+
+
+
+
+
 
 
