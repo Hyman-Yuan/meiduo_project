@@ -12,4 +12,6 @@ urlpatterns = [
     url(r'^mobiles/(?P<mobile>1[3-9]\d{9})/count/$',views.MobileCountView.as_view()),
     # http://127.0.0.1:8000/login
     url(r'^login/$',views.LoginView.as_view()),
+    # http://127.0.0.1:8000/logout
+    url(r'^logout/$', views.LogoutView.as_view()),
 ]

@@ -220,3 +220,6 @@ LOGGING = {
 # 修改Django用户认证模型类
 AUTH_USER_MODEL = 'user.User'
 
+# AUTHENTICATION_BACKENDS = ['django.contrib.auth.backends.ModelBackend']
+# 指定Django认证后端类 AccountAuthBackend(自定义认证后端类)
+AUTHENTICATION_BACKENDS = ['user.utils.AccountAuthBackend']

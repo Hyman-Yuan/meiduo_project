@@ -1,13 +1,16 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.views import View
 from django import http
-from django.contrib.auth import login, authenticate
+from django.contrib.auth import login,authenticate, logout
 from django_redis import get_redis_connection
+from django.db.models import Q
+from django.conf import settings
 
 import re
 
 from user.models import User
 from meiduo_mall.utils.response_code import RETCODE
+
 
 class RegisterView(View):
 
@@ -112,6 +115,7 @@ class LoginView(View):
 
         query_dict = request.POST
         username = query_dict.get('username')
+        account = query_dict.get('username')
         password = query_dict.get('password')
         remembered = query_dict.get('remembered')    # # 记住登录,非必勾项  勾选时'on' 未勾选时 None
         if not all([username,password]):
@@ -130,11 +134,37 @@ class LoginView(View):
         #     return render(request, 'login.html', {'account_errmsg': '用户名或密码不正确'})
 
         # # method 2
+        # #
         # # 用户认证,通过认证返回当前user模型否则返回None!! attention the result of authenticate (user module or None)
-        user = authenticate(request,username=username,password=password)
-        if not user:
+        # user = authenticate(request,username=username,password=password)
+        # if not user:
+        #     return render(request, 'login.html', {'account_errmsg': '用户名或密码不正确'})
+
+        # # 优化升级:实现多账号登录
+
+        # method 1:  Ues Q object get User object.
+        # try:
+        #     user = User.objects.get(Q(username=username) | Q(user_mobile=username))
+        #     if not user.check_password(password):
+        #         return render(request, 'login.html', {'account_errmsg': '用户名或密码不正确'})
+        # except User.DoesNotExist:
+        #     return render(request, 'login.html', {'account_errmsg': '用户名或密码不正确'})
+
+        # # method 2: use try nesting
+        # try:
+        #     user = User.objects.get(username=account)
+        #     if not user.check_password(password):
+        #         return render(request, 'login.html', {'account_errmsg': '用户名或密码不正确'})
+        # except User.DoesNotExist:
+        #     user = User.objects.get(user_mobile=account)
+        #     if not user.check_password(password):
+        #         return render(request, 'login.html', {'account_errmsg': '用户名或密码不正确'})
+
+
+        # # method 3:重写authenticate方法
+        user = authenticate(request, username=username, password=password)
+        if  user is None:
             return render(request, 'login.html', {'account_errmsg': '用户名或密码不正确'})
-        #
 
         # keep status,default two weeks
         login(request,user)
@@ -143,7 +173,37 @@ class LoginView(View):
             request.session.set_expiry(0)  # 状态保持 不勾选,则session 设置0 或者 cookie 设置为None,cookie && session 的有效期截止于关闭浏览器
         else:
             request.session.set_expiry(3600*24*7)  # 勾选状态保持,设置自定义 的 用户登录状态保持的时间
-        return http.HttpResponse('login successful')
+
+
+        # return http.HttpResponse('login successful')
+
+        # 重定向
+        # return http.HttpResponse('登录成功去到首页')
+        response = redirect('/')  # 重定向到首页
+
+        # if remembered is None:
+        #     response.set_cookie('username', user.username, max_age=None)  # cookie过期时间指定为None代表会话结束
+        # else:
+        #     response.set_cookie('username', user.username, max_age=settings.SESSION_COOKIE_AGE)  # cookie过期时间指定为None代表会话结束
+        # 登录成功向用户浏览器cookie中存储username
+        response.set_cookie('username',
+                            user.username,
+                            max_age=None if (remembered is None) else settings.SESSION_COOKIE_AGE)  # cookie过期时间指定为None代表会话结束
+        # 三目: 条件返回值 if 条件 else 不成立时返回值
+        return response
+
+
+class LogoutView(View):
+    """退出登录"""
+    def get(self, request):
+        # 1. 清除状态保持
+        logout(request)
+        # 2. 清除cookie中的username
+        response = redirect('/login/')
+        response.delete_cookie('username')
+        # 3. 重定向到login界面
+        return response
+
 
 
 
