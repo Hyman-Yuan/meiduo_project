@@ -40,7 +40,7 @@ SECRET_KEY = 'cx05qh%+zf7m=cut&i_n@)_!64e6x@y5uz&tt!0zy=l-z3rjuu'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['www.meiduo.site','127.0.0.1']
 
 
 # Application definition
@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'user.apps.UserConfig',
+    'oauth.apps.OauthConfig',
 ]
 
 MIDDLEWARE = [
