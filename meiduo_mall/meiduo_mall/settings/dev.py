@@ -224,3 +224,12 @@ AUTH_USER_MODEL = 'user.User'
 # AUTHENTICATION_BACKENDS = ['django.contrib.auth.backends.ModelBackend']
 # 指定Django认证后端类 AccountAuthBackend(自定义认证后端类)
 AUTHENTICATION_BACKENDS = ['user.utils.AccountAuthBackend']
+
+# 判断登录时,LoginRequiredMixin的配置项,
+# 默认 LOGIN_URL = '/accounts/login/'
+LOGIN_URL = '/login/'
+
+# QQ_login config patterns
+QQ_CLIENT_ID = '101518219'     # APPid
+QQ_CLIENT_SECRET = '418d84ebdc7241efb79536886ae95224'  # APPkey
+QQ_REDIRECT_URI = 'http://www.meiduo.site:8000/oauth_callback'   # 回调地址

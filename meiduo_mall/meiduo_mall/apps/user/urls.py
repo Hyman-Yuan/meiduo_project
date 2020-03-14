@@ -2,7 +2,7 @@ from django.conf.urls import url
 from . import views
 
 
-
+# 配置文件修改后,域名改为:www.meiduo.site
 urlpatterns = [
     # http://127.0.0.1:8000/register
     url(r'^register/$',views.RegisterView.as_view()),
@@ -14,4 +14,6 @@ urlpatterns = [
     url(r'^login/$',views.LoginView.as_view()),
     # http://127.0.0.1:8000/logout
     url(r'^logout/$', views.LogoutView.as_view()),
+    # http://127.0.0.1:8000/logout
+    url(r'^info/$', views.InfoView.as_view()),
 ]

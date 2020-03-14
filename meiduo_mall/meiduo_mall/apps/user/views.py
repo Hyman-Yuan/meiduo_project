@@ -5,6 +5,7 @@ from django.contrib.auth import login,authenticate, logout
 from django_redis import get_redis_connection
 from django.db.models import Q
 from django.conf import settings
+from django.contrib.auth.mixins import LoginRequiredMixin
 
 import re
 
@@ -78,8 +79,7 @@ class RegisterView(View):
         user = User.objects.create_user(username=username,password=password,user_mobile=mobile)
         # django自带的模块 login实现状态保持,logout实现退出登录,基于cookie和session实现的
         login(request,user)
-
-        return http.HttpResponse('Register successfull')
+        return redirect('/')
 
 #  /usernames/(?P<username>[a-zA-Z0-9_-]{5,20})/count/
 # 当鼠标点击用户名输入框之外的区域,浏览器会再次发送一个请求
@@ -162,6 +162,7 @@ class LoginView(View):
 
 
         # # method 3:重写authenticate方法
+        # 用户认证,通过认证返回当前user模型否则返回None
         user = authenticate(request, username=username, password=password)
         if  user is None:
             return render(request, 'login.html', {'account_errmsg': '用户名或密码不正确'})
@@ -179,8 +180,8 @@ class LoginView(View):
 
         # 重定向
         # return http.HttpResponse('登录成功去到首页')
-        response = redirect('/')  # 重定向到首页
-
+        # response = redirect('/')  # 重定向到首页
+        response = redirect(request.GET.get('next') or '/')
         # if remembered is None:
         #     response.set_cookie('username', user.username, max_age=None)  # cookie过期时间指定为None代表会话结束
         # else:
@@ -204,6 +205,30 @@ class LogoutView(View):
         # 3. 重定向到login界面
         return response
 
+#
+class InfoView(LoginRequiredMixin,View):
+    """用户中心"""
+    # def get(self, request):
+    #     # 判断当前请求用户是否登录
+
+    #     method 1
+    #     # isinstance(对象, 类名)  # 判断对象是否有 指定的类或子类创建出来的对象
+    #     # if isinstance(request.user, User):
+
+    #     method 2
+    #     user = request.user
+    #     if user.is_authenticated:
+    #         # 如果是登录用户展示用户中心界面
+    #         return render(request, 'user_center_info.html')
+
+    #     else:
+    #         # 如果是未登录用户就重定向到login
+    #         # return redirect('/login/')
+    #         return redirect('/login/?next=/info/')
+
+    # method 3
+    def get(self,request):
+        return render(request,'user_center_info.html')
 
 
 
