@@ -2,20 +2,24 @@ from django.shortcuts import render,redirect
 from django.views import View
 from django import http
 from django.contrib.auth import login
-import logging
-from .models import OAuthQQUser
-
-from QQLoginTool.QQtool import OAuthQQ
-
-from meiduo_mall.utils.response_code import RETCODE
 from django.conf import settings
+from django_redis import get_redis_connection
+
+import logging, re
+
+from user.models import User
+from .models import OAuthQQUser
+from QQLoginTool.QQtool import OAuthQQ
+from meiduo_mall.utils.response_code import RETCODE
+from .utils import generate_openid_sign,check_out_openid
 
 # 指定日志输出器为django中 的日志输出器
 logger = logging.getLogger('django')
-# QQ认证的参数,QQ登录开发 过程中 需要的参数
-QQ_CLIENT_ID = '101518219'     # APPid
-QQ_CLIENT_SECRET = '418d84ebdc7241efb79536886ae95224'  # APPkey
-QQ_REDIRECT_URI = 'http://www.meiduo.site:8000/oauth_callback'   # 回调地址
+
+# # QQ认证的参数,QQ登录开发 过程中 需要的参数
+# QQ_CLIENT_ID = '101518219'     # APPid
+# QQ_CLIENT_SECRET = '418d84ebdc7241efb79536886ae95224'  # APPkey
+# QQ_REDIRECT_URI = 'http://www.meiduo.site:8000/oauth_callback'   # 回调地址
 
 # 1. 获取QQ登录扫码页面
 class QQAuthView(View):
@@ -41,8 +45,8 @@ class QQAuthView(View):
 
 # """QQ登录成功回调处理"""
 class QQUserAuthView(View):
+    #
     def get(self,request):
-
     # 1.接收查询参数
         code = request.GET.get('code')
     # 2.校验code,校验请求中是否 带回了 code里的内容
@@ -50,8 +54,9 @@ class QQUserAuthView(View):
             return http.HttpResponseForbidden('Lost patterns')
     # 创建QQ登录工具对象
         qq_login_obj = OAuthQQ(client_id=settings.QQ_CLIENT_ID,
-                               client_secret=QQ_CLIENT_ID,
-                               redirect_uri=QQ_REDIRECT_URI)
+                               client_secret=settings.QQ_CLIENT_SECRET,
+                               redirect_uri=settings.QQ_REDIRECT_URI)
+
         try:
         # 通过code获取access_token
             access_token = qq_login_obj.get_access_token(code)
@@ -69,9 +74,9 @@ class QQUserAuthView(View):
             # 未绑定账号时,跳转到绑定页面
             # openid如何处理? 将openid存入绑定页面
             # 绑定账号页面 隐藏的输入框标签  接收openid,再和 表单标签 一起提交到服务器
-            '''< input v - model = "openid" type = "hidden" name = "openid" value = "{{ openid }}" >'''
+            # '''< input v - model = "openid" type = "hidden" name = "openid" value = "{{ openid }}" >'''
             # 此时的openid时明文可见,不安全
-            data = {'oppenid':openid}
+            data = {'openid': generate_openid_sign(openid)}
 
             # openid属于用户的隐私信息，所以需要将openid签名处理，避免暴露。
             # 使用 itsdangerous
@@ -90,11 +95,7 @@ class QQUserAuthView(View):
             # set_cookie(self, key, value='', max_age=None, expires=None, path='/',domain=None, secure=False, httponly=False):
             response.set_cookie('username',user.username,max_age=settings.SESSION_COOKIE_AGE)
             return response
-
-
-
-
-
+    # 课堂代码
     # def get(self,request):
     #     """Oauth2.0认证"""
     #     # 接收Authorization Code
@@ -136,4 +137,45 @@ class QQUserAuthView(View):
     #
     #
 
+    # 使用openid 绑定用户
+    def post(self,request):
+        query_dict = request.POST
+        mobile = query_dict.get('mobile')
+        password = query_dict.get('password')
+        image_code = query_dict.get('image_code')
+        sms_code = query_dict.get('sms_code')
+        # 对openid进行解密,并返回解密后的结果
+        openid = check_out_openid(query_dict.get('openid'))
+
+
+        if not all([mobile,password,image_code,sms_code,openid]):
+            return http.HttpResponseForbidden('缺少必传参数')
+        if not re.match(r'^1[3-9]\d{9}$',mobile):
+            return http.HttpResponseForbidden('请输入正确的手机号')
+        if not re.match(r'^[0-9A-Za-z]{8,20}',password):
+            return http.HttpResponseForbidden('请输入8-20密码')
+
+        redis_server = get_redis_connection('verify_codes')
+        redis_sms_code = redis_server.get('sms_%s' % mobile)
+        if redis_sms_code is None:
+            return http.HttpResponseForbidden('短信验证码已过期')
+        redis_sms_code = redis_sms_code.decode()
+        if sms_code != redis_sms_code:
+            return http.HttpResponseForbidden('请输入正确的短信验证码')
+        if openid is None:
+            return http.HttpResponseForbidden('openid无效')
+        try:
+            user = User.objects.get(user_mobile=mobile)
+        except User.DoesNotExist:
+            # 如果mobile没有查询到,说明是新用户,就创建一个新user再和openid绑定
+            user = User.objects.create_user(username=mobile, password=password, mobile=mobile)
+        else:
+            # 如果mobile能查询到,说明是已注册的老用户,再校验密码,
+            if user.check_password(password) is False:
+                return http.HttpResponseForbidden('QQ绑定用户失败')
+        OAuthQQUser.objects.create(openid=openid,user=user)
+        login(request, user)
+        response = redirect(request.GET.get('state') or '/')
+        response.set_cookie('username', user.username, max_age=settings.SESSION_COOKIE_AGE)
+        return response
 

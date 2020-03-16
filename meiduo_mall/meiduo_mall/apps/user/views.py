@@ -70,16 +70,18 @@ class RegisterView(View):
         # !!! redis中存储的数据是byte类型,must decode()
         sms_code_server = redis_cli.get('sms_%s' % mobile).decode()
         if sms_code_server is None:
-            return render(request,'register.html',{'error_image_code':'短信验证码已过期'})
+            return render(request,'register.html',{'sms_code_error':'短信验证码已过期'})
         if sms_code != sms_code_server:
-            return render(request, 'register.html', {'error_image_code': '短信验证码错误'})
+            return render(request, 'register.html', {'sms_code_error': '短信验证码错误'})
 
         # AbstractUser中自定义了 UserManager(),管理器中实现了 create_user方法,该方法将 create,set_password,save 进行了封装,简化了代码
         #  # notice the parameters and attributes in User class.
         user = User.objects.create_user(username=username,password=password,user_mobile=mobile)
         # django自带的模块 login实现状态保持,logout实现退出登录,基于cookie和session实现的
         login(request,user)
-        return redirect('/')
+        response = redirect('/')
+        response.set_cookie('username',user.username,max_age=settings.SESSION_COOKIE_AGE)
+        return response
 
 #  /usernames/(?P<username>[a-zA-Z0-9_-]{5,20})/count/
 # 当鼠标点击用户名输入框之外的区域,浏览器会再次发送一个请求

@@ -61,7 +61,7 @@ class SMSCodeView(View):
         # 创建连接到redis的对象
         redis_obj = get_redis_connection('verify_codes')
         # 1 首先校验当前手机号 是否 已经发送短信,如若发送,redis中会有记录
-        mobile_is_use =  redis_obj.get(mobile)
+        mobile_is_use = redis_obj.get(mobile)
         # 如果手机号已经使用,则mobile_is_use 返回非空的结果,表示条件成立,执行if语句内部代码块
         if mobile_is_use:
             return http.JsonResponse({'code':RETCODE.THROTTLINGERR,'errmsg':"访问过于频繁"})
