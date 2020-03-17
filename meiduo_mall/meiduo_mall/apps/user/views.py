@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.views import View
 from django import http
-from django.contrib.auth import login,authenticate, logout
+from django.contrib.auth import login, authenticate, logout
 from django_redis import get_redis_connection
 from django.db.models import Q
 from django.conf import settings
@@ -18,12 +18,12 @@ from meiduo_mall.utils.response_code import RETCODE
 
 class RegisterView(View):
 
-    def get(self,request):
+    def get(self, request):
 
-        return render(request,'register.html')
+        return render(request, 'register.html')
 
     # register logic
-    def post(self,request):
+    def post(self, request):
         # post方法提交的数据使用 request.POST 接收,返回一个query_dict 对象.
         # 返回一个QueryDict对象.类似字典  通过 .get('key') 获取到 key所对应的值.
         query_dict = request.POST
@@ -48,16 +48,15 @@ class RegisterView(View):
         sms_code = query_dict.get('sms_code')
         allow = query_dict.get('allow')
 
-
-        if all([username,password,password2,mobile,sms_code,allow]) is False:
+        if all([username, password, password2, mobile, sms_code, allow]) is False:
             return http.HttpResponseForbidden('please make sure all the parameter is not blank')
-        if not re.match(r'^[a-zA-Z0-9_-]{5,20}$',username):
+        if not re.match(r'^[a-zA-Z0-9_-]{5,20}$', username):
             return http.HttpResponseForbidden('请输入5-20个字符的用户名')
-        if not re.match(r'^[a-zA-Z0-9_]{8,20}$',password):
+        if not re.match(r'^[a-zA-Z0-9_]{8,20}$', password):
             return http.HttpResponseForbidden('请输入8-20个字符的密码')
         if password != password2:
             return http.HttpResponseForbidden('两次输入的密码不一致')
-        if not re.match(r'^1[3-9]\d{9}$',mobile):
+        if not re.match(r'^1[3-9]\d{9}$', mobile):
             return http.HttpResponseForbidden('请输入正确格式的手机号')
         # create user by the original ways
         # 创建用户
@@ -67,24 +66,24 @@ class RegisterView(View):
         # 保存.提交到 mysql数据库
         # user.save()
 
-
         # TODO: 短信验证码校验逻辑,后期补充
         redis_cli = get_redis_connection('verify_codes')
         # !!! redis中存储的数据是byte类型,must decode()
         sms_code_server = redis_cli.get('sms_%s' % mobile).decode()
         if sms_code_server is None:
-            return render(request,'register.html',{'sms_code_error':'短信验证码已过期'})
+            return render(request, 'register.html', {'sms_code_error': '短信验证码已过期'})
         if sms_code != sms_code_server:
             return render(request, 'register.html', {'sms_code_error': '短信验证码错误'})
 
         # AbstractUser中自定义了 UserManager(),管理器中实现了 create_user方法,该方法将 create,set_password,save 进行了封装,简化了代码
         #  # notice the parameters and attributes in User class.
-        user = User.objects.create_user(username=username,password=password,user_mobile=mobile)
+        user = User.objects.create_user(username=username, password=password, user_mobile=mobile)
         # django自带的模块 login实现状态保持,logout实现退出登录,基于cookie和session实现的
-        login(request,user)
+        login(request, user)
         response = redirect('/')
-        response.set_cookie('username',user.username,max_age=settings.SESSION_COOKIE_AGE)
+        response.set_cookie('username', user.username, max_age=settings.SESSION_COOKIE_AGE)
         return response
+
 
 #  /usernames/(?P<username>[a-zA-Z0-9_-]{5,20})/count/
 # 当鼠标点击用户名输入框之外的区域,浏览器会再次发送一个请求
@@ -95,37 +94,38 @@ class RegisterView(View):
 #                 axios.get(url, {responseType: 'json'})
 
 class UsernameCountView(View):
-        # 类视图中 get方法 传入参数时,取决于 正则组 的的写法
-        # 正则组 未取别名 则按位置传参,如果有别名,则按正则组的别名进行传参
-    def get(self,request,username):
+    # 类视图中 get方法 传入参数时,取决于 正则组 的的写法
+    # 正则组 未取别名 则按位置传参,如果有别名,则按正则组的别名进行传参
+    def get(self, request, username):
         # ORM模型 增删改查  通过 模型类 实现的,通过用户名查询数据库中该用户名是否存在
         count = User.objects.filter(username=username).count()
 
-        return http.JsonResponse({'code':RETCODE.OK,'errmsg':'OK','count':count})
+        return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK', 'count': count})
+
 
 # be similar to UsernameCountView
 class MobileCountView(View):
 
-    def get(self,request,mobile):
+    def get(self, request, mobile):
         count = User.objects.filter(user_mobile=mobile).count()
         return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK', 'count': count})
 
 
 class LoginView(View):
     '''登录功能'''
-    def get(self,request):
-        return render(request,'login.html')   # 登录页面
 
-    def post(self,request):
+    def get(self, request):
+        return render(request, 'login.html')  # 登录页面
+
+    def post(self, request):
 
         query_dict = request.POST
         username = query_dict.get('username')
         account = query_dict.get('username')
         password = query_dict.get('password')
-        remembered = query_dict.get('remembered')    # # 记住登录,非必勾项  勾选时'on' 未勾选时 None
-        if not all([username,password]):
+        remembered = query_dict.get('remembered')  # # 记住登录,非必勾项  勾选时'on' 未勾选时 None
+        if not all([username, password]):
             return http.HttpResponseForbidden('error')
-
 
         # # login by username
         # # method 1
@@ -165,21 +165,19 @@ class LoginView(View):
         #     if not user.check_password(password):
         #         return render(request, 'login.html', {'account_errmsg': '用户名或密码不正确'})
 
-
         # # method 3:重写authenticate方法
         # 用户认证,通过认证返回当前user模型否则返回None
         user = authenticate(request, username=username, password=password)
-        if  user is None:
+        if user is None:
             return render(request, 'login.html', {'account_errmsg': '用户名或密码不正确'})
 
         # keep status,default two weeks
-        login(request,user)
+        login(request, user)
         # session 设置为0 和cookie的None都代表关闭浏览器就删除
         if remembered is None:
             request.session.set_expiry(0)  # 状态保持 不勾选,则session 设置0 或者 cookie 设置为None,cookie && session 的有效期截止于关闭浏览器
         else:
-            request.session.set_expiry(3600*24*7)  # 勾选状态保持,设置自定义 的 用户登录状态保持的时间
-
+            request.session.set_expiry(3600 * 24 * 7)  # 勾选状态保持,设置自定义 的 用户登录状态保持的时间
 
         # return http.HttpResponse('login successful')
 
@@ -194,13 +192,15 @@ class LoginView(View):
         # 登录成功向用户浏览器cookie中存储username
         response.set_cookie('username',
                             user.username,
-                            max_age=None if (remembered is None) else settings.SESSION_COOKIE_AGE)  # cookie过期时间指定为None代表会话结束
+                            max_age=None if (
+                                        remembered is None) else settings.SESSION_COOKIE_AGE)  # cookie过期时间指定为None代表会话结束
         # 三目: 条件返回值 if 条件 else 不成立时返回值
         return response
 
 
 class LogoutView(View):
     """退出登录"""
+
     def get(self, request):
         # 1. 清除状态保持
         logout(request)
@@ -210,9 +210,11 @@ class LogoutView(View):
         # 3. 重定向到login界面
         return response
 
+
 #
-class InfoView(LoginRequiredMixin,View):
+class InfoView(LoginRequiredMixin, View):
     """用户中心"""
+
     # def get(self, request):
     #     # 判断当前请求用户是否登录
 
@@ -232,13 +234,13 @@ class InfoView(LoginRequiredMixin,View):
     #         return redirect('/login/?next=/info/')
 
     # method 3
-    def get(self,request):
-        return render(request,'user_center_info.html')
+    def get(self, request):
+        return render(request, 'user_center_info.html')
 
 
-class EmailView(LoginRequiredMixin,View):
+class EmailView(LoginRequiredMixin, View):
     # 分析前端传入数据的数据格式,类型，决定数据的接收方法
-    def put(self,request):
+    def put(self, request):
         # 向用户添加邮箱 ,以下代码会重复执行，影响程序性能
         # # json_str_bytes = request.body # request.body返回bytes类型
         # # json_str = json_str_bytes.decode() # 将bytes类型 转为json字符串
@@ -252,7 +254,7 @@ class EmailView(LoginRequiredMixin,View):
         # user = request.user
         # user.email = email
         # user.save()
-        user = request.user   # 获取user用户
+        user = request.user  # 获取user用户
         # 优化设置用户邮箱
         # 判断当前user用户的email是否为空，从mysql中查询。。
         if not user.email:
@@ -264,7 +266,7 @@ class EmailView(LoginRequiredMixin,View):
             if new_email is None:
                 return http.HttpResponseForbidden('请填写邮箱后重试')
             # 校验email
-            if not re.match(r'^[a-z0-9][\w\.\-]*@[a-z0-9\-]+(\.[a-z]{2,5}){1,2}$',new_email):
+            if not re.match(r'^[a-z0-9][\w\.\-]*@[a-z0-9\-]+(\.[a-z]{2,5}){1,2}$', new_email):
                 return http.HttpResponseForbidden('请输入正确的邮箱')
             # 校验通过后，保存user用户的邮箱
             user.email = new_email
@@ -292,8 +294,14 @@ class EmailView(LoginRequiredMixin,View):
         return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK'})
 
 
-
-
-
-
-
+class EmailVerifyView(View):
+    def get(self, request):
+        token = request.GET.get('token')
+        if token is None:
+            return http.HttpResponseForbidden('缺少必传参数')
+        user = check_out_user_email(token=token)
+        if user is None:
+            return http.HttpResponseForbidden('邮件激活失败')
+        user.email_active = True
+        user.save()
+        return redirect('/info/')
