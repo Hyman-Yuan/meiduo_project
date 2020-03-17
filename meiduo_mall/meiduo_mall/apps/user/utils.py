@@ -1,5 +1,7 @@
 from django.contrib.auth.backends import ModelBackend
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer,BadData
 
+from django.conf import settings
 
 from .models import User
 
@@ -26,4 +28,31 @@ class AccountAuthBackend(ModelBackend):
         if user and user.check_password(password):
             return user
             # 返回user
+
+
+def generate_email_verify_url(user):
+    # # 创建加密/解密对象
+    serializer = Serializer(secret_key=settings.SECRET_KEY,expires_in=3600)
+    # 需要加密内容
+    data = {'id':user.id,'email':user.email}
+    # 使用serializer对象将data加密，并转成字符串格式
+    token = serializer.dumps(data).decode()
+    # 拼接邮箱验证的连接
+    verify_url = settings.EMAIL_VERIFY_URL + '?token=' + token
+
+    return verify_url
+
+def check_out_user_email(token):
+    serializer = Serializer(secret_key=settings.SECRET_KEY, expires_in=3600)
+    try:
+        data = serializer.loads(token)
+        user_id = data.get('id')
+        user_email = data.get('email')
+        try:
+            user = User.objects.get(id=user_id,email=user_email)
+            return user
+        except:
+            return None
+    except:
+        return None
 

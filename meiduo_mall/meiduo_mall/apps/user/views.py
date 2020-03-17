@@ -6,11 +6,13 @@ from django_redis import get_redis_connection
 from django.db.models import Q
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
-from  django.core.mail import send_mail
+from django.core.mail import send_mail
 
 import re, json
 
 from user.models import User
+from celery_tasks.send_email.tasks import send_verify_email
+from .utils import generate_email_verify_url, check_out_user_email
 from meiduo_mall.utils.response_code import RETCODE
 
 
@@ -267,15 +269,27 @@ class EmailView(LoginRequiredMixin,View):
             # 校验通过后，保存user用户的邮箱
             user.email = new_email
             user.save()
-
             # 用户邮箱保存后，要进行判断用户邮箱 是否验证(用户能否通过当前email收发邮件)
             # 使用django内部发送邮件的模块。不同项目 需要更改发送邮件相关 的配置
-            # from  django.core.mail import send_mail
             '''
             send_mail(subject='邮箱主题', message='邮件普通', from_email='发件人',
                       recipient_list='收件人列表',html_message='邮件超文本内容')
             '''
-            return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK'})
+            # 可以使用celery  异步执行发送邮箱的功能
+            # subject = "美多商城邮箱验证"
+            # html_message = '<p>尊敬的用户您好！</p>' \
+            #                '<p>感谢您使用美多商城。</p>' \
+            #                '<p>您的邮箱为：%s 。请点击此链接激活您的邮箱：</p>' % new_email
+            # send_mail(subject=subject,
+            #           message='',
+            #           from_email=settings.EMAIL_FROM,
+            #           recipient_list=[new_email],
+            #           html_message=html_message)
+
+        verify_url = generate_email_verify_url(user)
+        send_verify_email(to_email=user.email, verify_url=verify_url)
+
+        return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK'})
 
 
 

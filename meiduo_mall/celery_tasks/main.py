@@ -17,5 +17,5 @@ celery_cli.config_from_object('celery_tasks.config')
 # 3.给当前celery的 任务列表 添加任务,[]列表里的参数,是任务的导包路径
 
 celery_cli.autodiscover_tasks([
-    'celery_tasks.sms',
+    'celery_tasks.sms','celery_tasks.send_email',
 ])
