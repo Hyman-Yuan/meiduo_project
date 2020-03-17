@@ -49,7 +49,7 @@ var vm = new Vue({
             if (this.error_email == false) {
                 var url = this.host + '/emails/';
                 axios.put(url, {
-                        email: this.email
+                        email: this.email       // 向服务器发起请求，将当前input标签的email 存在json数据中传递给服务器
                     }, {
                         headers: {
                             'X-CSRFToken':getCookie('csrftoken')

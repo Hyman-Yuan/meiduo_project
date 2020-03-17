@@ -6,8 +6,9 @@ from django_redis import get_redis_connection
 from django.db.models import Q
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
+from  django.core.mail import send_mail
 
-import re
+import re, json
 
 from user.models import User
 from meiduo_mall.utils.response_code import RETCODE
@@ -231,6 +232,50 @@ class InfoView(LoginRequiredMixin,View):
     # method 3
     def get(self,request):
         return render(request,'user_center_info.html')
+
+
+class EmailView(LoginRequiredMixin,View):
+    # 分析前端传入数据的数据格式,类型，决定数据的接收方法
+    def put(self,request):
+        # 向用户添加邮箱 ,以下代码会重复执行，影响程序性能
+        # # json_str_bytes = request.body # request.body返回bytes类型
+        # # json_str = json_str_bytes.decode() # 将bytes类型 转为json字符串
+        # # data = json.loads(json_str) # 将json字符串转换为字典
+        # # email = data.get('email') # 将字典里存储的email 获取到
+        # # if email is None:
+        # #     return http.HttpResponseForbidden('请填写邮箱后重试')
+        # # # 校验email
+        # # if  not re.match(r'^[a-z0-9][\w\.\-]*@[a-z0-9\-]+(\.[a-z]{2,5}){1,2}$',email):
+        # #     return http.HttpResponseForbidden('请输入正确的邮箱')
+        # user = request.user
+        # user.email = email
+        # user.save()
+        user = request.user   # 获取user用户
+        # 优化设置用户邮箱
+        # 判断当前user用户的email是否为空，从mysql中查询。。
+        if not user.email:
+            json_str_bytes = request.body
+            json_str = json_str_bytes.decode()
+            data = json.loads(json_str)
+            new_email = data.get('email')
+            # 判断前端 input 标签传入的 email是否为空
+            if new_email is None:
+                return http.HttpResponseForbidden('请填写邮箱后重试')
+            # 校验email
+            if not re.match(r'^[a-z0-9][\w\.\-]*@[a-z0-9\-]+(\.[a-z]{2,5}){1,2}$',new_email):
+                return http.HttpResponseForbidden('请输入正确的邮箱')
+            # 校验通过后，保存user用户的邮箱
+            user.email = new_email
+            user.save()
+
+            # 用户邮箱保存后，要进行判断用户邮箱 是否验证(用户能否通过当前email收发邮件)
+            # 使用django内部发送邮件的模块。不同项目 需要更改发送邮件相关 的配置
+            # from  django.core.mail import send_mail
+            '''
+            send_mail(subject='邮箱主题', message='邮件普通', from_email='发件人',
+                      recipient_list='收件人列表',html_message='邮件超文本内容')
+            '''
+            return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK'})
 
 
 

@@ -126,8 +126,8 @@
 <script type="text/javascript">
     let username = "{{ request.user.username }}";
     let mobile = "{{ request.user.user_mobile }}";
-    let email = "{{ request.user.email }}";
-    let email_active = "{{ request.user.email_active }}";
+    let email = "{{ request.user.email }}"; //
+    let email_active = "{{ request.user.email_active }}"; //前端先判断邮箱状态
 </script>
 <script type="text/javascript" src="{{ static('js/common.js') }}"></script>
 <script type="text/javascript" src="{{ static('js/user_center_info.js') }}"></script>

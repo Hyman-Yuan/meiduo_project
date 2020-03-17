@@ -16,4 +16,5 @@ urlpatterns = [
     url(r'^logout/$', views.LogoutView.as_view()),
     # http://127.0.0.1:8000/logout
     url(r'^info/$', views.InfoView.as_view()),
+    url(r'^emails/$', views.EmailView.as_view()),
 ]

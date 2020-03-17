@@ -1,4 +1,9 @@
 from celery import Celery
+import os
+
+# 在当前程序系统环境中添加django配置文件模板,
+# 如果当前celery 中有函数或者方法使用了django的配置文件，则必须加
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "meiduo_mall.settings.dev")
 
 # 创建celery实例
 # 1.创建celery客户端对象 Celery第一个位置参数是当前任务的别名
