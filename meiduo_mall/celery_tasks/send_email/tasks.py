@@ -16,3 +16,8 @@ def send_verify_email(to_email,verify_url):
               from_email=settings.EMAIL_FROM,
               recipient_list=[to_email],
               html_message=html_message)
+
+    # send_mail(subject="hello_world",
+    #           message="hahah",
+    #           from_email=settings.EMAIL_FROM,
+    #           recipient_list=[to_email])

@@ -14,6 +14,8 @@ from user.models import User
 from celery_tasks.send_email.tasks import send_verify_email
 from .utils import generate_email_verify_url, check_out_user_email
 from meiduo_mall.utils.response_code import RETCODE
+from  meiduo_mall.utils.views import LoginRequiredView
+
 
 
 class RegisterView(View):
@@ -239,7 +241,7 @@ class InfoView(LoginRequiredMixin, View):
 
 
 class EmailView(LoginRequiredMixin, View):
-    # 分析前端传入数据的数据格式,类型，决定数据的接收方法
+    # 分析前端传入数据的数据格式,类型，决定数据的接收方法/GET/POST/PUT
     def put(self, request):
         # 向用户添加邮箱 ,以下代码会重复执行，影响程序性能
         # # json_str_bytes = request.body # request.body返回bytes类型
@@ -305,3 +307,9 @@ class EmailVerifyView(View):
         user.email_active = True
         user.save()
         return redirect('/info/')
+
+
+class AddressView(LoginRequiredView):
+
+    def get(self,request):
+        return render(request,'user_center_site.html')
