@@ -211,9 +211,9 @@ var vm = new Vue({
                                 // 局部刷新界面：展示所有地址信息，将新的地址添加到头部
                                 this.addresses.splice(0, 0, response.data.address);
                                 this.is_show_edit = false;
-                                // if (this.default_address_id == '') {
-                                //     location.href = '/addresses/'
-                                // }
+                                if (this.default_address_id == '') {
+                                    location.href = '/addresses/'
+                                }
                             } else if (response.data.code == '4101') {
                                 location.href = '/login/?next=/addresses/';
                             } else if (response.data.code == '4007') {

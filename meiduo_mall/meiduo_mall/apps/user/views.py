@@ -7,16 +7,18 @@ from django.db.models import Q
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.mail import send_mail
+from django.db import DatabaseError
 
 import re, json, logging
 
-from user.models import User,Address
+from user.models import User, Address
 from celery_tasks.send_email.tasks import send_verify_email
 from .utils import generate_email_verify_url, check_out_user_email
 from meiduo_mall.utils.response_code import RETCODE
-from  meiduo_mall.utils.views import LoginRequiredView
+from meiduo_mall.utils.views import LoginRequiredView
 
 logger = logging.getLogger('django')
+
 
 class RegisterView(View):
 
@@ -195,7 +197,7 @@ class LoginView(View):
         response.set_cookie('username',
                             user.username,
                             max_age=None if (
-                                        remembered is None) else settings.SESSION_COOKIE_AGE)  # cookie过期时间指定为None代表会话结束
+                                    remembered is None) else settings.SESSION_COOKIE_AGE)  # cookie过期时间指定为None代表会话结束
         # 三目: 条件返回值 if 条件 else 不成立时返回值
         return response
 
@@ -309,42 +311,163 @@ class EmailVerifyView(View):
         return redirect('/info/')
 
 
-class AddressView(LoginRequiredView):
+# class AddressView(LoginRequiredView):
+#     # 展示用户地址
+#     def get(self,request):
+#         user = request.user
+#         address_qs = Address.objects.filter(user=user,is_deleted=False)
+#         address_list = []
+#         for address in address_qs:
+#             address_list.append({
+#                 "id": address.id,
+#                 "title": address.title,
+#                 "receiver": address.receiver,
+#                 "province": address.province.name,
+#                 "city": address.city.name,
+#                 "district": address.district.name,
+#                 "province_id": address.province_id,
+#                 "city_id": address.city_id,
+#                 "district_id": address.district_id,
+#                 "place": address.place,
+#                 "mobile": address.mobile,
+#                 "tel": address.tel,
+#                 "email": address.email
+#             })
+#         response_data = {
+#             'addresses': address_list,  # 当前用户所有收货地址
+#             'default_address_id': user.default_address_id  # 用户默认收货地址id
+#         }
+#
+#         return render(request,'user_center_site.html',response_data)
+#
+#
+# class AddressCreateView(LoginRequiredView):
+#     # 前端使用post发起的请求
+#     def post(self,request):
+#         # 接收数据，前端传入了一个json数据
+#         user =request.user
+#         address_count = Address.objects.filter(user=user,is_deleted=False).count()
+#         if address_count == 20:
+#             return http.HttpResponseForbidden({'code': RETCODE.THROTTLINGERR, 'errmsg': '收货地址超过上限'})
+#         json_data = json.loads(request.body.decode())
+#         # html 必填
+#         title =json_data.get('title')
+#         receiver =json_data.get('receiver')
+#         province_id =json_data.get('province_id')
+#         city_id =json_data.get('city_id')
+#         district_id =json_data.get('district_id')
+#         place =json_data.get('place')
+#         mobile =json_data.get('mobile')
+#         #  选填
+#         tel =json_data.get('tel')
+#         email =json_data.get('email')
+#         # 校验数据
+#         if not all([title,receiver,province_id,city_id,district_id,place]):
+#             return http.HttpResponseForbidden('缺少必传参数')
+#         if not re.match(r'^1[3-9]\d{9}$',mobile):
+#             return http.HttpResponseForbidden('Error Mobile')
+#         if tel:
+#             if not re.match(r'^(0[0-9]{2,3}-)?([2-9][0-9]{6,7})+(-[0-9]{1,4})?$', tel):
+#                 return http.HttpResponseForbidden('Error Tel')
+#         if email:
+#             if not re.match(r'^[a-z0-9][\w\.\-]*@[a-z0-9\-]+(\.[a-z]{2,5}){1,2}$', email):
+#                 return http.HttpResponseForbidden('Error Email')
+#         try:
+#             address = Address.objects.create(
+#                 user=request.user,
+#                 title=title,
+#                 receiver=receiver,
+#                 province_id=province_id,
+#                 city_id=city_id,
+#                 district_id=district_id,
+#                 place=place,
+#                 mobile=mobile,
+#                 tel=tel,
+#                 email=email,
+#             )
+#             # 判断当前地址是否是用户的默认地址
+#             if not request.user.default_address:
+#                 request.user.default_address = address
+#                 request.user.save()
+#         except Exception as e:
+#             logger.error(e)
+#             return http.HttpResponseForbidden('Address Create Failed')
+#         address_dict={
+#                         "id":address.id,
+#                         "title":address.title,
+#                         "receiver":address.receiver,
+#                         "province":address.province.name,
+#                         "city":address.city.name,
+#                         "district":address.district.name,
+#                         "province_id": address.province_id,
+#                         "city_id": address.city_id,
+#                         "district_id": address.district_id,
+#                         "place":address.place,
+#                         "mobile":address.mobile,
+#                         "tel":address.tel,
+#                         "email":address.email}
+#         return http.JsonResponse({'code':RETCODE.OK,'errmsg':'OK','address':address_dict})
 
-    def get(self,request):
-        return render(request,'user_center_site.html')
+
+class AddressDisplayView(LoginRequiredView):
+    def get(self, request):
+        user = request.user
+        address_obj = Address.objects.filter(user=user, is_deleted=False)
+        address_list = []
+        for address in address_obj:
+            address_list.append({
+                'id': address.id,
+                "title": address.title,
+                "receiver": address.receiver,
+                "province_id": address.province_id,
+                "city_id": address.city_id,
+                "district_id": address.district_id,
+                "province": address.province.name,
+                "city": address.city.name,
+                "district": address.district.name,
+                "place": address.place,
+                "mobile": address.mobile,
+                "tel": address.tel,
+                "email": address.email,
+            })
+        response_data = {
+            "addresses": address_list,
+            "default_address_id": user.default_address_id
+        }
+
+        return render(request, 'user_center_site.html', response_data)
 
 
-class AddressCreateView(LoginRequiredView):
-    # 前端使用post发起的请求
-    def post(self,request):
-        # 接收数据，前端传入了一个json数据
-        json_data = json.loads(request.body.decode())
-        # html 必填
-        title =json_data.get('title')
-        receiver =json_data.get('receiver')
-        province_id =json_data.get('province_id')
-        city_id =json_data.get('city_id')
-        district_id =json_data.get('district_id')
-        place =json_data.get('place')
-        mobile =json_data.get('mobile')
-        #  选填
-        tel =json_data.get('tel')
-        email =json_data.get('email')
-        # 校验数据
-        if not all([title,receiver,province_id,city_id,district_id,place]):
+class CreateAddressView(LoginRequiredView):
+
+    def post(self, request):
+        user = request.user
+        count = Address.objects.filter(user=user, is_deleted=False).count()
+        if count == 20:
+            return http.JsonResponse({'code': RETCODE.THROTTLINGERR, 'errmsg': '收货地址超过上限'})
+        recive_data = json.loads(request.body.decode())
+        title = recive_data.get('')
+        receiver = recive_data.get('receiver')
+        province_id = recive_data.get('province_id')
+        city_id = recive_data.get('city_id')
+        district_id = recive_data.get('district_id')
+        place = recive_data.get('place')
+        mobile = recive_data.get('mobile')
+        tel = recive_data.get('tel')
+        email = recive_data.get('email')
+        if not all([title, receiver, province_id, city_id, district_id, place, mobile]):
             return http.HttpResponseForbidden('缺少必传参数')
-        if not re.match(r'^1[3-9]\d{9}$',mobile):
-            return http.HttpResponseForbidden('Error Mobile')
+        if not re.match(r'^1[3-9]\d{9}$', mobile):
+            return http.HttpResponseForbidden('error mobile')
         if tel:
             if not re.match(r'^(0[0-9]{2,3}-)?([2-9][0-9]{6,7})+(-[0-9]{1,4})?$', tel):
-                return http.HttpResponseForbidden('Error Tel')
+                return http.HttpResponseForbidden('参数tel有误')
         if email:
             if not re.match(r'^[a-z0-9][\w\.\-]*@[a-z0-9\-]+(\.[a-z]{2,5}){1,2}$', email):
-                return http.HttpResponseForbidden('Error Email')
+                return http.HttpResponseForbidden('参数email有误')
         try:
             address = Address.objects.create(
-                user=request.user,
+                user=user,
                 title=title,
                 receiver=receiver,
                 province_id=province_id,
@@ -353,24 +476,27 @@ class AddressCreateView(LoginRequiredView):
                 place=place,
                 mobile=mobile,
                 tel=tel,
-                email=email,
-            )
-            # 判断当前地址是否是用户的默认地址
-            # if not request.user.default_address:
-            #     request.user.default_address = address
-            #     request.user.save()
-        except Exception as e:
+                email=email, )
+        except DatabaseError as e:
             logger.error(e)
-            return http.HttpResponseForbidden('Address Create Failed')
-        address_dict={
-                        "id":address.id,
-                        "title":address.title,
-                        "receiver":address.receiver,
-                        "province":address.province.name,
-                        "city":address.city.name,
-                        "district":address.district.name,
-                        "place":address.place,
-                        "mobile":address.mobile,
-                        "tel":address.tel,
-                        "email":address.email}
-        return http.JsonResponse({'code':RETCODE.OK,'errmsg':'OK','address':address_dict})
+            return http.HttpResponseForbidden('新增收货地址失败')
+        if user.default_address is None:
+            user.default_address = address
+            user.save()
+
+        response_address = {
+            'id': address.id,
+            "title": address.title,
+            "receiver": address.receiver,
+            "province_id": address.province_id,
+            "city_id": address.city_id,
+            "district_id": address.district_id,
+            "province": address.province.name,
+            "city": address.city.name,
+            "district": address.district.name,
+            "place": address.place,
+            "mobile": address.mobile,
+            "tel": address.tel,
+            "email": address.email,
+        }
+        return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK', 'address': response_address})
