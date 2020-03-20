@@ -22,4 +22,7 @@ urlpatterns = [
     # url(r'^addresses/create/$',views.AddressCreateView.as_view()),
     url(r'^addresses/$',views.AddressDisplayView.as_view()),
     url(r'^addresses/create/$',views.CreateAddressView.as_view()),
+    url(r'^addresses/(?P<address_id>[\d]+)/$',views.UpdateAddressView.as_view()),
+    url(r'^addresses/(?P<address_id>[\d]+)/title/$',views.UpdateAddressTitleView.as_view()),
+    url(r'^addresses/(?P<address_id>[\d]+)/default/$',views.SetDefaultAddressView.as_view()),
 ]

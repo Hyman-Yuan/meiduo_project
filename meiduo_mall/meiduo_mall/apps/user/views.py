@@ -439,14 +439,14 @@ class AddressDisplayView(LoginRequiredView):
 
 
 class CreateAddressView(LoginRequiredView):
-
+    # add new address
     def post(self, request):
         user = request.user
         count = Address.objects.filter(user=user, is_deleted=False).count()
         if count == 20:
             return http.JsonResponse({'code': RETCODE.THROTTLINGERR, 'errmsg': '收货地址超过上限'})
         recive_data = json.loads(request.body.decode())
-        title = recive_data.get('')
+        title = recive_data.get('title')
         receiver = recive_data.get('receiver')
         province_id = recive_data.get('province_id')
         city_id = recive_data.get('city_id')
@@ -500,3 +500,106 @@ class CreateAddressView(LoginRequiredView):
             "email": address.email,
         }
         return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK', 'address': response_address})
+
+# update address
+#  // 修改地址
+#  axios.put(url, this.form_address,
+#  url = this.host + '/addresses/' + this.addresses[this.editing_address_index].id + '/';
+
+# // 删除地址
+#  axios.delete(url, {
+#  var url = this.host + '/addresses/' + this.addresses[index].id + '/';
+
+
+class UpdateAddressView(LoginRequiredView):
+    # 修改地址
+    def put(self,request,address_id):
+        user = request.user
+        recive_data = json.loads(request.body.decode())
+        title = recive_data.get('title')
+        receiver = recive_data.get('receiver')
+        province_id = recive_data.get('province_id')
+        city_id = recive_data.get('city_id')
+        district_id = recive_data.get('district_id')
+        place = recive_data.get('place')
+        mobile = recive_data.get('mobile')
+        tel = recive_data.get('tel')
+        email = recive_data.get('email')
+        if not all([title, receiver, province_id, city_id, district_id, place, mobile]):
+            return http.HttpResponseForbidden('缺少必传参数')
+        if not re.match(r'^1[3-9]\d{9}$', mobile):
+            return http.HttpResponseForbidden('error mobile')
+        if tel:
+            if not re.match(r'^(0[0-9]{2,3}-)?([2-9][0-9]{6,7})+(-[0-9]{1,4})?$', tel):
+                return http.HttpResponseForbidden('参数tel有误')
+        if email:
+            if not re.match(r'^[a-z0-9][\w\.\-]*@[a-z0-9\-]+(\.[a-z]{2,5}){1,2}$', email):
+                return http.HttpResponseForbidden('参数email有误')
+        try:
+            address = Address.objects.create(
+                user=user,
+                title=title,
+                receiver=receiver,
+                province_id=province_id,
+                city_id=city_id,
+                district_id=district_id,
+                place=place,
+                mobile=mobile,
+                tel=tel,
+                email=email, )
+        except DatabaseError as e:
+            logger.error(e)
+            return http.HttpResponseForbidden('修改收货地址失败')
+        response_address = {
+            'id': address.id,
+            "title": address.title,
+            "receiver": address.receiver,
+            "province_id": address.province_id,
+            "city_id": address.city_id,
+            "district_id": address.district_id,
+            "province": address.province.name,
+            "city": address.city.name,
+            "district": address.district.name,
+            "place": address.place,
+            "mobile": address.mobile,
+            "tel": address.tel,
+            "email": address.email,
+        }
+        return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK','address':response_address})
+    # 删除地址
+    def delete(self,request,address_id):
+        user = request.user
+        try:
+            address = Address.objects.get(user=user,id=address_id)
+            address.is_deleted = True
+            address.save()
+        except Address.DoesNotExist:
+            return http.JsonResponse({'code':RETCODE.NODATAERR,'errmsg':'address does not exit'})
+        return http.JsonResponse({'code':RETCODE.OK,'errmsg':'OK'})
+
+
+class UpdateAddressTitleView(LoginRequiredView):
+    def put(self,request,address_id):
+        user = request.user
+        recive_dict = json.loads(request.body.decode())
+        new_title = recive_dict.get('title')
+        if  not new_title:
+            return http.JsonResponse({'code':RETCODE.NODATAERR,'errmsg':'title does not exit'})
+        try:
+            address = Address.objects.get(user=user,id=address_id)
+            address.title = new_title
+            address.save()
+        except Address.DoesNotExist:
+            return http.JsonResponse({'code': RETCODE.NODATAERR, 'errmsg': 'address does not exit'})
+        return http.JsonResponse({'code':RETCODE.OK,'errmsg':'OK'})
+
+class SetDefaultAddressView(LoginRequiredView):
+    def put(self,request,address_id):
+        user = request.user
+        try:
+            address = Address.objects.get(user=user,id=address_id)
+            user.default_address = address
+            user.save()
+        except Address.DoesNotExist:
+            return http.JsonResponse({'code':RETCODE.NODATAERR,'errmsg':'address does not exit'})
+        return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK'})
