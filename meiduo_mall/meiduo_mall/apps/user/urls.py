@@ -22,7 +22,10 @@ urlpatterns = [
     # url(r'^addresses/create/$',views.AddressCreateView.as_view()),
     url(r'^addresses/$',views.AddressDisplayView.as_view()),
     url(r'^addresses/create/$',views.CreateAddressView.as_view()),
+    # 修改地址/删除地址
     url(r'^addresses/(?P<address_id>[\d]+)/$',views.UpdateAddressView.as_view()),
+    # 修改地址标题
     url(r'^addresses/(?P<address_id>[\d]+)/title/$',views.UpdateAddressTitleView.as_view()),
+    # 设置默认地址
     url(r'^addresses/(?P<address_id>[\d]+)/default/$',views.SetDefaultAddressView.as_view()),
 ]
