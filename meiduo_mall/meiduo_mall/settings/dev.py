@@ -257,3 +257,11 @@ EMAIL_FROM = '美多商城<13550585028@163.com>'  # 发件人抬头
 
 # 邮箱验证链接
 EMAIL_VERIFY_URL = 'http://www.meiduo.site:8000/emails/verification/'
+
+# Absolute filesystem path to the directory that will hold user-uploaded files.
+# Example: "/var/www/example.com/media/"
+MEDIA_ROOT = ''
+
+# URL that handles the media served from MEDIA_ROOT.
+# Examples: "http://example.com/media/", "http://media.example.com/"
+MEDIA_URL = 'http://www.meiduo.site:8888/'

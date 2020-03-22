@@ -1,5 +1,8 @@
 
 from goods.models import GoodsChannel
+from contents.models import ContentCategory
+
+# 商品类别展示函数
 def get_goods_categories():
     ''' 需要传递给前端的数据  结构
     categories = {
@@ -59,3 +62,29 @@ def get_goods_categories():
             return_data[group_id]['sub_cats'].append(category2)
 
     return return_data
+
+# 广告展示函数
+def show_advertisement():
+    """
+    {
+        'index_lb': ['lb'],  # 一个列表代表同一类型的所有广告
+        'index_kx': ['kx']
+    }
+    """
+    # # 1.定义用来包装所有广告数据的大字典
+    # contents = {}
+    # # 2. 将所有广告类别数据全部获取到
+    # content_cat_qs = ContentCategory.objects.all()
+    # # 3. 遍历广告类别模型
+    # for content_cat_model in content_cat_qs:
+    #     # 4.包装广告数据
+    #     contents[content_cat_model.key] = content_cat_model.content_set.filter(status=True).order_by('sequence')
+    advertisement = {}
+    adv_type_qs = ContentCategory.objects.filter()
+    # class ContentCategory(BaseModels):
+    #     """广告内容类别"""
+    #     name = models.CharField(max_length=50, verbose_name='名称')
+    #     key = models.CharField(max_length=50, verbose_name='类别键名')
+    for adv_type in adv_type_qs:
+        advertisement[adv_type.key] = adv_type.content_set.filter(status=True).order_by('sequence')
+    return advertisement

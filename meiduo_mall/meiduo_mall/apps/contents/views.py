@@ -1,7 +1,7 @@
 from django.shortcuts import render
 # Create your views here.
 from django.views import View
-from .utils import get_goods_categories
+from .utils import get_goods_categories,show_advertisement
 
 from goods.models import GoodsCategory, GoodsChannel
 
@@ -11,5 +11,6 @@ class IndexView(View):
 
     def get(self, request):
         context = {'goods_categories': get_goods_categories(), # 个人写法
-                   'categories':get_goods_categories()}  # 讲义写法
+                   'categories':get_goods_categories(),
+                   'contents':show_advertisement()}  # 讲义写法
         return render(request, 'index.html', context)
