@@ -260,8 +260,12 @@ EMAIL_VERIFY_URL = 'http://www.meiduo.site:8000/emails/verification/'
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
 # Example: "/var/www/example.com/media/"
-MEDIA_ROOT = ''
+# MEDIA_ROOT = ''
 
 # URL that handles the media served from MEDIA_ROOT.
 # Examples: "http://example.com/media/", "http://media.example.com/"
-MEDIA_URL = 'http://www.meiduo.site:8888/'
+# MEDIA_URL = 'http://www.meiduo.site:8888/'
+
+
+# 指定Django文件存储类 自定义存储类解决图片不显示问题
+DEFAULT_FILE_STORAGE = 'meiduo_mall.utils.fastdfs.fdfs_storage.FastDFSStorage'
