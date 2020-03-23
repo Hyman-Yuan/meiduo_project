@@ -1,10 +1,12 @@
 from django.shortcuts import render
 from django.views import View
 from django import http
+from django.core.paginator import Paginator, EmptyPage
 # Create your views here.
 from contents.utils import get_goods_categories
 from .models import GoodsCategory
 from .utils import category_navication
+
 
 class ListView(View):
     def get(self,request,category_id,page_num):
@@ -18,14 +20,26 @@ class ListView(View):
         # 查询到当前所有数据，如果直接返回前端，渲染html 影响查询性能，同时前端数据 过多
         # 每页展示的数量
         page = 3
+        page_num = int(page_num)
+        '''
         # 当前三级类别下sku总数量
         sku_count = sku_qs.count()
         # 需要分页的数量
-        page_num = int(page_num)
         total_pages = sku_count // page + 1 if (sku_count % page) else 0
         start = (page_num-1) * page
         end = start + page
+        # 获取指定页的数据
         page_skus = sku_qs[start:end]
+        '''
+        # 使用分页器 Paginator 创建分页器对象 实现分页
+        paginator = Paginator(sku_qs,page)
+        # 需要分页的数量
+        total_pages = paginator.num_pages
+        # 获取指定页的数据
+        try:
+            page_skus = paginator.page(page_num)
+        except EmptyPage:
+            return http.HttpResponseForbidden('the page does noe exist')
 
         data ={
             'categories':get_goods_categories(),    # 商品类型
