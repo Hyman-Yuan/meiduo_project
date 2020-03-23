@@ -14,9 +14,18 @@ class ListView(View):
             cats3 = GoodsCategory.objects.get(id=category_id)
         except GoodsCategory.DoesNotExist:
             return http.HttpResponseForbidden('Does not find GoodsCategory object')
+        # 商品列表排序(price:price)(hot:sales)(default:create_time/update_time)
+        sort = request.GET.get('sort')
+        if sort == 'price':
+            sort_field = 'price'
+        elif sort == 'hot':
+            sort_field = 'sales'
+        else:
+            sort = 'default'
+            sort_field = 'create_time'
 
         # 查询当前三级类别下的所有sku
-        sku_qs = cats3.sku_set.filter(is_launched=True)
+        sku_qs = cats3.sku_set.filter(is_launched=True).order_by(sort_field)
         # 查询到当前所有数据，如果直接返回前端，渲染html 影响查询性能，同时前端数据 过多
         # 每页展示的数量
         page = 3
@@ -45,7 +54,7 @@ class ListView(View):
             'categories':get_goods_categories(),    # 商品类型
             'breadcrumb':category_navication(cats3),                        # 面包屑数据
             'category': cats3,  # 三级类型模型对象
-            'sort': 'price',  # 排序字段
+            'sort': sort,  # 排序字段
             'page_skus': page_skus,  # 当前页要展示的所有sku数据
             'page_num': page_num,  # 当前显示第几页
             'total_page': total_pages,  # 总页数
