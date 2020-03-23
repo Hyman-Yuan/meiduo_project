@@ -269,3 +269,6 @@ EMAIL_VERIFY_URL = 'http://www.meiduo.site:8000/emails/verification/'
 
 # 指定Django文件存储类 自定义存储类解决图片不显示问题
 DEFAULT_FILE_STORAGE = 'meiduo_mall.utils.fastdfs.fdfs_storage.FastDFSStorage'
+
+
+FDFS_BASE_URL = 'http://image.meiduo.site:8888/'

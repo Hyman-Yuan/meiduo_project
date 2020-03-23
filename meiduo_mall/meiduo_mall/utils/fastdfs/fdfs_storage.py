@@ -1,4 +1,5 @@
 from django.core.files.storage import Storage
+from django.conf import settings
 
 
 class FastDFSStorage(Storage):
@@ -26,4 +27,4 @@ class FastDFSStorage(Storage):
         :param name: file_id
         :return: 完整的图片url : http://192.168.115.132:8888/ + file_id
         """
-        return 'http://192.168.115.132:8888/' + name
+        return settings.FDFS_BASE_URL + name
