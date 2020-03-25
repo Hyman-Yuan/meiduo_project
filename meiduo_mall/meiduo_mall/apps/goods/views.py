@@ -3,6 +3,7 @@ from django.views import View
 from django import http
 from django.core.paginator import Paginator, EmptyPage
 from django.utils import timezone
+from django_redis import get_redis_connection
 # Create your views here.
 from meiduo_mall.utils.response_code import RETCODE
 from contents.utils import get_goods_categories
@@ -170,3 +171,4 @@ class VisitView(View):
         goods_visits.count += 1      # 增加访问量
         goods_visits.save()
         return http.JsonResponse({'code':RETCODE.OK,'errmsg':'OK'})
+

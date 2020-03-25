@@ -12,13 +12,13 @@ from django.db import DatabaseError
 import re, json, logging
 
 from user.models import User, Address
+from goods.models import SKU
 from celery_tasks.send_email.tasks import send_verify_email
 from .utils import generate_email_verify_url, check_out_user_email
 from meiduo_mall.utils.response_code import RETCODE
 from meiduo_mall.utils.views import LoginRequiredView
 
 logger = logging.getLogger('django')
-
 
 class RegisterView(View):
 
@@ -87,8 +87,6 @@ class RegisterView(View):
         response = redirect('/')
         response.set_cookie('username', user.username, max_age=settings.SESSION_COOKIE_AGE)
         return response
-
-
 #  /usernames/(?P<username>[a-zA-Z0-9_-]{5,20})/count/
 # 当鼠标点击用户名输入框之外的区域,浏览器会再次发送一个请求
 # register.html :
@@ -106,14 +104,12 @@ class UsernameCountView(View):
 
         return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK', 'count': count})
 
-
 # be similar to UsernameCountView
 class MobileCountView(View):
 
     def get(self, request, mobile):
         count = User.objects.filter(user_mobile=mobile).count()
         return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK', 'count': count})
-
 
 class LoginView(View):
     '''登录功能'''
@@ -201,7 +197,6 @@ class LoginView(View):
         # 三目: 条件返回值 if 条件 else 不成立时返回值
         return response
 
-
 class LogoutView(View):
     """退出登录"""
 
@@ -213,7 +208,6 @@ class LogoutView(View):
         response.delete_cookie('username')
         # 3. 重定向到login界面
         return response
-
 
 #
 class InfoView(LoginRequiredMixin, View):
@@ -240,7 +234,6 @@ class InfoView(LoginRequiredMixin, View):
     # method 3
     def get(self, request):
         return render(request, 'user_center_info.html')
-
 
 class EmailView(LoginRequiredMixin, View):
     # 分析前端传入数据的数据格式,类型，决定数据的接收方法/GET/POST/PUT
@@ -297,7 +290,6 @@ class EmailView(LoginRequiredMixin, View):
 
         return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK'})
 
-
 class EmailVerifyView(View):
     def get(self, request):
         token = request.GET.get('token')
@@ -309,7 +301,6 @@ class EmailVerifyView(View):
         user.email_active = True
         user.save()
         return redirect('/info/')
-
 
 # class AddressView(LoginRequiredView):
 #     # 展示用户地址
@@ -407,7 +398,6 @@ class EmailVerifyView(View):
 #                         "tel":address.tel,
 #                         "email":address.email}
 #         return http.JsonResponse({'code':RETCODE.OK,'errmsg':'OK','address':address_dict})
-
 
 class AddressDisplayView(LoginRequiredView):
     def get(self, request):
@@ -510,10 +500,9 @@ class CreateAddressView(LoginRequiredView):
 #  axios.delete(url, {
 #  var url = this.host + '/addresses/' + this.addresses[index].id + '/';
 
-
 class UpdateAddressView(LoginRequiredView):
     # 修改地址
-    def put(self,request,address_id):
+    def put(self, request, address_id):
         user = request.user
         recive_data = json.loads(request.body.decode())
         title = recive_data.get('title')
@@ -565,41 +554,100 @@ class UpdateAddressView(LoginRequiredView):
             "tel": address.tel,
             "email": address.email,
         }
-        return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK','address':response_address})
+        return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK', 'address': response_address})
+
     # 删除地址
-    def delete(self,request,address_id):
+    def delete(self, request, address_id):
         user = request.user
         try:
-            address = Address.objects.get(user=user,id=address_id)
+            address = Address.objects.get(user=user, id=address_id)
             address.is_deleted = True
             address.save()
         except Address.DoesNotExist:
-            return http.JsonResponse({'code':RETCODE.NODATAERR,'errmsg':'address does not exit'})
-        return http.JsonResponse({'code':RETCODE.OK,'errmsg':'OK'})
+            return http.JsonResponse({'code': RETCODE.NODATAERR, 'errmsg': 'address does not exit'})
+        return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK'})
 
 
 class UpdateAddressTitleView(LoginRequiredView):
-    def put(self,request,address_id):
+    def put(self, request, address_id):
         user = request.user
         recive_dict = json.loads(request.body.decode())
         new_title = recive_dict.get('title')
-        if  not new_title:
-            return http.JsonResponse({'code':RETCODE.NODATAERR,'errmsg':'title does not exit'})
+        if not new_title:
+            return http.JsonResponse({'code': RETCODE.NODATAERR, 'errmsg': 'title does not exit'})
         try:
-            address = Address.objects.get(user=user,id=address_id)
+            address = Address.objects.get(user=user, id=address_id)
             address.title = new_title
             address.save()
         except Address.DoesNotExist:
             return http.JsonResponse({'code': RETCODE.NODATAERR, 'errmsg': 'address does not exit'})
-        return http.JsonResponse({'code':RETCODE.OK,'errmsg':'OK'})
+        return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK'})
+
 
 class SetDefaultAddressView(LoginRequiredView):
-    def put(self,request,address_id):
+    def put(self, request, address_id):
         user = request.user
         try:
-            address = Address.objects.get(user=user,id=address_id)
+            address = Address.objects.get(user=user, id=address_id)
             user.default_address = address
             user.save()
         except Address.DoesNotExist:
-            return http.JsonResponse({'code':RETCODE.NODATAERR,'errmsg':'address does not exit'})
+            return http.JsonResponse({'code': RETCODE.NODATAERR, 'errmsg': 'address does not exit'})
         return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK'})
+
+
+class BrowseHistoryView(View):
+    # 存储用户浏览历史 登录用户才存储，未登录则不操作
+    # 由前端页面加载时 mounted 中的this.save_browse_histories()函数发起的post请求
+    def post(self, request):
+        user = request.user
+        user_id = user.id
+        # user.is_authenticated 登录:if 条件成立  未登录:if 条件不成立 其结果不等于（True|False）
+        if not user.is_authenticated:
+            return http.JsonResponse({'code': RETCODE.SESSIONERR, 'errmsg': '用户未登录什么与不做'})
+        json_dict = json.loads(request.body.decode())
+        # 接收当前浏览商品的sku_id
+        try:
+            sku_id = json_dict.get('sku_id')
+        except Exception:
+            return http.JsonResponse({'code': RETCODE.SESSIONERR, 'errmsg': '用户未登录什么与不做'})
+        # 需要存储的数据类型  redis 中的 list  key:value  user:[sku_1,sku_2]...
+        redis_cli = get_redis_connection('history')
+        # # 先去重
+        # redis_cli.lrem(f'history_{user_id}',0,sku_id)
+        # # 再存储
+        # redis_cli.lpush(f'history_{user_id}',sku_id)
+        # # 最后截取
+        # redis_cli.ltrim(f'history_{user_id}',0,4)
+        # 使用管道对象(pipeline())操作redis
+        pl = redis_cli.pipeline()
+        pl.lrem(f'history_{user_id}', 0, sku_id)  # 去重
+        pl.lpush(f'history_{user_id}', sku_id)  # 存储
+        pl.ltrim(f'history_{user_id}', 0, 4)  # 截取
+        pl.execute()  # 提交
+        return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK'})
+
+    # 查询用户浏览历史
+    def get(self, request):
+        # 判断登录
+        user = request.user
+        if not user.is_authenticated:
+            return http.JsonResponse({'code': RETCODE.SESSIONERR, 'errmsg': '用户未登录什么也不做'})
+        # 创建redis客户端对象
+        redis_cli = get_redis_connection('history')
+        # 查询当前用户存入redis的sku_id
+        sku_id_list = redis_cli.lrange(f'history_{user.id}', 0, -1)
+        sku_list = []
+        for sku_id in sku_id_list:
+            sku = SKU.objects.get(id=sku_id)
+            sku_list.append({
+                'id':sku.id,
+                'name':sku.name,
+                'default_image_url':sku.default_image.url,
+                'price':sku.price
+            })
+        # id	商品SKU编号
+        # name	商品SKU名称
+        # default_image_url	商品SKU默认图片
+        # price
+        return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK','skus':sku_list})

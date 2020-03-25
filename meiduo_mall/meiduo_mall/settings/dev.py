@@ -165,6 +165,13 @@ CACHES = {
             'CLIENT_CLASS':'django_redis.client.DefaultClient'
         }
     },
+    "history": {  # 用户浏览记录
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/3",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    },
 }
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
@@ -219,7 +226,8 @@ LOGGING = {
             'propagate': True,  # 是否继续传递日志信息
             'level': 'INFO',  # 日志器接收的最低日志级别
         },
-    }
+    },
+
 }
 
 # 修改Django用户认证模型类

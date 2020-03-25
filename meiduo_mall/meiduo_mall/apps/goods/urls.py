@@ -7,5 +7,4 @@ urlpatterns = [
     url(r'^detail/(?P<sku_id>\d+)/',views.DetailView.as_view()),
     url(r'^visit/(?P<category_id>\d+)/',views.VisitView.as_view()),
 
-
 ]
