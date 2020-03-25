@@ -2,16 +2,16 @@ from django.shortcuts import render
 from django.views import View
 from django import http
 from django.core.paginator import Paginator, EmptyPage
-
+from django.utils import timezone
 # Create your views here.
 from meiduo_mall.utils.response_code import RETCODE
 from contents.utils import get_goods_categories
-from .models import GoodsCategory,SKU
+from .models import GoodsCategory, SKU, GoodsVisitCount
 from .utils import category_navication
 
 
 class ListView(View):
-    def get(self,request,category_id,page_num):
+    def get(self, request, category_id, page_num):
         try:
             cats3 = GoodsCategory.objects.get(id=category_id)
         except GoodsCategory.DoesNotExist:
@@ -43,7 +43,7 @@ class ListView(View):
         page_skus = sku_qs[start:end]
         '''
         # 使用分页器 Paginator 创建分页器对象 实现分页
-        paginator = Paginator(sku_qs,page)
+        paginator = Paginator(sku_qs, page)
         # 需要分页的数量
         total_pages = paginator.num_pages
         # 获取指定页的数据
@@ -52,9 +52,9 @@ class ListView(View):
         except EmptyPage:
             return http.HttpResponseForbidden('the page does noe exist')
 
-        data ={
-            'categories':get_goods_categories(),    # 商品类型
-            'breadcrumb':category_navication(cats3),                        # 面包屑数据
+        data = {
+            'categories': get_goods_categories(),  # 商品类型
+            'breadcrumb': category_navication(cats3),  # 面包屑数据
             'category': cats3,  # 三级类型模型对象
             'sort': sort,  # 排序字段
             'page_skus': page_skus,  # 当前页要展示的所有sku数据
@@ -62,11 +62,12 @@ class ListView(View):
             'total_page': total_pages,  # 总页数
         }
 
-        return render(request,'list.html',data)
+        return render(request, 'list.html', data)
+
 
 # /hot/115/
 class HotGoodsView(View):
-    def get(self,request,category_id):
+    def get(self, request, category_id):
         try:
             cats3 = GoodsCategory.objects.get(id=category_id)
         except GoodsCategory.DoesNotExist:
@@ -81,15 +82,26 @@ class HotGoodsView(View):
                 'price': sku.price,
                 'default_image_url': sku.default_image.url
             })
-        return http.JsonResponse({'code':RETCODE.OK,'errmsg':'OK','hot_skus':sku_list})
+        return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK', 'hot_skus': sku_list})
 
+
+#         sku_qs = cat3.sku_set.filter(is_launched=True).order_by('-sales')[:2]
+#         # 将sku查询集中的模型转字典并添加到列表中
+#         sku_list = []  # 用来包装sku字典
+#         for sku in sku_qs:
+#             sku_list.append({
+#                 'id': sku.id,
+#                 'name': sku.name,
+#                 'price': sku.price,
+#                 'default_image_url': sku.default_image.url
+#             })
 
 # /detail/3/
 
 class DetailView(View):
-    def get(self,request,sku_id):
+    def get(self, request, sku_id):
         try:
-            sku = SKU.objects.get(id=sku_id,is_launched=True)
+            sku = SKU.objects.get(id=sku_id, is_launched=True)
             cats3 = sku.category
             spu = sku.spu
         except SKU.DoesNotExist:
@@ -129,7 +141,6 @@ class DetailView(View):
 
             spec.spec_options = spec_option_qs  # 把规格下的所有选项绑定到规格对象的spec_options属性上
 
-
         context = {
             'categories': get_goods_categories(),  # 商品分类
             'breadcrumb': category_navication(cats3),  # 面包屑导航
@@ -139,4 +150,23 @@ class DetailView(View):
             'spec_qs': spu_spec_qs,  # 当前商品的所有规格数据
         }
 
-        return render(request, 'detail.html',context)
+        return render(request, 'detail.html', context)
+
+
+class VisitView(View):
+    def post(self, request, category_id):
+        # 1.获取当前category_id 的模型对象
+        try:
+            category = GoodsCategory.objects.get(id=category_id)
+        except GoodsCategory.DoesNotExist:
+            return http.HttpResponseForbidden('Not found category_id')
+        # 获取当天日期
+        today_date = timezone.now()
+        # 2.判断当天是否访问过此类别的商品，没有则新增，有则count+1
+        try:
+            goods_visits = GoodsVisitCount.objects.get(category=category,date=today_date)
+        except GoodsVisitCount.DoesNotExist:
+            goods_visits = GoodsVisitCount(category=category,date=today_date)
+        goods_visits.count += 1      # 增加访问量
+        goods_visits.save()
+        return http.JsonResponse({'code':RETCODE.OK,'errmsg':'OK'})
