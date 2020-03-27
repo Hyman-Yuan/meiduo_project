@@ -131,7 +131,8 @@ class CartsView(View):
         context ={'cart_skus': sku_list}
 
         return render(request,'cart.html',context)
-    # 修改购物车
+    # 修改购物车  (登录和为登录分别响应)
+    '''
     def put(self,request):
         # 接收数据
         json_dict = json.loads(request.body.decode())
@@ -198,7 +199,71 @@ class CartsView(View):
             response = http.JsonResponse({'code': RETCODE.OK, 'errmsg': '修改购物车成功', 'cart_sku': cart_sku})
             response.set_cookie('carts', carts_str)
             return response
+        '''
 
+    # 修改购物车  (功能优化): 核心思想:将前端传入的数据再返给前端，同时存储新的购物车
+    def put(self, request):
+        # 接收数据
+        json_dict = json.loads(request.body.decode())
+        sku_id = json_dict.get('sku_id')
+        count = json_dict.get('count')
+        # 提前定义一个selected变量，方便使用，无论前端是否传入了selected数据
+        selected = json_dict.get('selected', True)
+        # 校验
+        if all([sku_id, count]) is False:
+            return http.HttpResponseForbidden('缺少必传参数')
+        try:
+            sku = SKU.objects.get(id=sku_id, is_launched=True)
+        except SKU.DoesNotExist:
+            return http.HttpResponseForbidden('sku_id does not exist')
+        try:
+            count = int(count)
+        except Exception as e:
+            logger.error('error count')
+            return http.HttpResponseForbidden('error count')
+        if isinstance(selected, bool) is False:
+            return http.HttpResponseForbidden('selected类型有误')
+        # 提前构造响应数据
+        cart_sku = {
+            'id': sku.id,
+            'name': sku.name,
+            'selected': str(selected),
+            'price': str(sku.price),
+            'default_image_url': sku.default_image.url,
+            'amount': str(sku.price * count),
+            'count': count
+        }
+        # 创建响应对象
+        response = http.JsonResponse({'code': RETCODE.OK, 'errmsg': '修改购物车成功', 'cart_sku': cart_sku})
+
+        # 判断用户登录状态，实现购物车数据的存储
+        # 修改逻辑： 获取购旧的物车数据，新值覆盖旧值。
+        user = request.user
+        if user.is_authenticated:
+            # 登录用户存入redis
+            redis_cli = get_redis_connection('carts')
+            pl = redis_cli.pipeline()
+            # 修改hash中商品count
+            pl.hset(f'catrs_{user.id}', sku_id, count)
+            if selected:
+                pl.sadd(f'selected_{user.id}', sku_id)
+            else:
+                pl.srem(f'selected_{user.id}', sku_id)
+            pl.execute()
+        else:
+            # 未登录用户存入cookie
+            carts_str = request.COOKIES.get('carts')
+            if carts_str:
+                carts_data = pickle.loads(base64.b64decode(carts_str.encode()))
+            else:
+                return http.HttpResponseForbidden('没有cookie购物车数据')
+            # 修改 每次请求只有一个值，请求与响应同步
+            # 直接用新数据覆盖旧数据
+            carts_data[sku_id] = {'count': count, 'selected': selected}
+            # 购物车数据存入cookie
+            carts_str = base64.b64encode(pickle.dumps(carts_data)).decode()
+            response.set_cookie('carts', carts_str)
+        return response
 
 
 
