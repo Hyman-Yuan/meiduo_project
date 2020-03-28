@@ -265,5 +265,46 @@ class CartsView(View):
             response.set_cookie('carts', carts_str)
         return response
 
+    # 删除购物车,本质还是在修改购物车数据
+    def delete(self,request):
+        # 接收请求体数据（json数据）
+        json_dict = json.loads(request.body.decode())
+        sku_id = json_dict.get('sku_id')
+        # 校验
+        try:
+            sku = SKU.objects.get(id=sku_id)
+        except SKU.DoesNotExist:
+            return http.HttpResponseForbidden('sku_id does not exist')
+        # 创建响应对象，js请求，响应JsonResponse数据
+        response = http.JsonResponse({'code':RETCODE.OK,'errmsg':'OK'})
+        # 获取用户 User or AnonymousUser
+        user = request.user
+        if user.is_authenticated:
+            # 登录用户操作redis中的数据
+            redis_cli = get_redis_connection('carts')
+            pl = redis_cli.pipeline()
+            #  HDEL KEY_NAME FIELD1 .. FIELDN  删除一个或多个哈希表中的字段
+            pl.hdel(f'carts_{user.id}',sku_id)
+            # SREM KEY MEMBER1..MEMBERN        移除集合中一个或多个成员
+            pl.srem(f'selected_[user.id',sku_id)
+            pl.execute()
+        else:
+            # 未登录用户操作COOKIES数据  request.COOKIES.get('key')  得到字符串数据 经过解析 得到 原始数据
+            carts_str = request.COOKIES.get('carts')
+            # 判断有无购物车数据  str-->b'unicode' encode
+            if carts_str:
+                # 字符串先encode编码，在使用base64解码，最后使用pickle模块解析成dict
+                carts_dict = pickle.loads(base64.b64decode(carts_str.encode()))
+                del carts_dict[sku_id]
+            else:
+                return http.HttpResponseForbidden('carts does not exist')
+            # 删除购物车后数据后，重新设置COOKIE存储新的购物车数据
+            # 判断购物车是否为空   carts_dict={} ?
+            if not carts_dict:  # 空购物车直接删除COOKIE
+                response.delete_cookie('carts')
+                return response
+            carts_str = base64.b64encode(pickle.dumps(carts_dict)).decode()
+            response.set_cookie('carts',carts_str)
 
+        return response
 
