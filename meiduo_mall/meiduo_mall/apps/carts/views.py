@@ -353,3 +353,46 @@ class CartsSelectedAllView(View):
                 return http.HttpResponseForbidden('does not have carts data')
         return response
 
+
+class CartsSimpleView(View):
+    # GET /carts/simple/
+    # js cart_skus
+    def get(self,request):
+        user = request.user
+        if user.is_authenticated:
+            redis_cli = get_redis_connection('carts')
+            # 获取购物车数据
+            redis_dict = redis_cli.hgetall(f'carts_{user.id}')  # carts_user.id:{sku_id:count,}
+            selected_ids = redis_cli.smembers('selected_%s' % user.id)
+            if not redis_dict:
+                return http.JsonResponse({'code': RETCODE.NODATAERR, 'errmsg': '没有购物车数据'})
+            carts_dict = {}
+            # li = redis_dict.keys()
+            for sku_id_bytes in redis_dict:
+                for sku_id_bytes in redis_dict:     # 实现的功能等价于for sku_id_bytes in redis_dict.keys()
+                    # a = sku_id_bytes    #
+                    carts_dict[int(sku_id_bytes)] = {
+                        'count': int(redis_dict[sku_id_bytes]),
+                        'selected': sku_id_bytes in selected_ids
+                    }
+        else:
+            carts_str = request.COOKIES.get('carts')
+            if carts_str:
+                carts_dict = pickle.loads(base64.b64decode(carts_str.encode()))
+            else:
+                return http.JsonResponse({'code': RETCODE.NODATAERR, 'errmsg': '没有购物车数据'})
+        # 查询购物车中所有sku_id对应的sku模型
+        sku_qs = SKU.objects.filter(id__in=carts_dict.keys())
+        # 定义一个列表用来包装所有购物车商品字典
+        sku_list = []
+        for sku in sku_qs:
+            selected = carts_dict[sku.id]['selected']
+            count = carts_dict[sku.id]['count']
+            sku_list.append({
+                # 注册前面bool和 Decimal类型问题注意车换成str
+                'id': sku.id,
+                'name': sku.name,
+                'default_image_url': sku.default_image.url,
+                'count': count
+            })
+        return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK', 'cart_skus': sku_list})
