@@ -1,11 +1,13 @@
 from django.shortcuts import render
 from django_redis import get_redis_connection
+from django import http
 from decimal import Decimal
+import json, http
 
 from meiduo_mall.utils.views import LoginRequiredView
 from user.models import Address
 from goods.models import SKU
-
+from orders.models import OrderInfo
 
 class OrderSettlementView(LoginRequiredView):
     """结算订单"""
@@ -58,8 +60,32 @@ class OrderCommitView(LoginRequiredView):
     """提交订单"""
     def post(self, request):
         # 接收请求体数据
+        json_dict = json.loads(request.body.decode())
+        address_id = json_dict.get('address_id')
+        pay_method = json_dict.get('pay_method')
         # 校验
+        if all([address_id,pay_method]) is False:
+            return http.HttpResponseForbidden('缺少必传参数')
+        user = request.user
+        try:
+            address = Address.objects.get(id=address_id, user=user, is_deleted=True)
+        except Address.DoesNotExist:
+            return http.HttpResponseForbidden('address_id有误')
+
+        # if pay_method not in [1, 2]:
+        if pay_method not in [OrderInfo.PAY_METHODS_ENUM['CASH'], OrderInfo.PAY_METHODS_ENUM['ALIPAY']]:
+            return http.HttpResponseForbidden('支付方式有误')
         # 新增订单基本信息记录(OrderInfo) 一
+        OrderInfo.objects.create(
+            order_id='',
+            user=user,
+            address=address,
+            total_count=0,  # 后期再修改
+            total_amount=Decimal('0.00'),
+            freight=Decimal('10.00'),
+            pay_method=pay_method,
+            status=''
+        )
         # 修改sku库存和销量
         # 修改spu销量
         # 新增订单商品信息记录(OrderGoods)  多
