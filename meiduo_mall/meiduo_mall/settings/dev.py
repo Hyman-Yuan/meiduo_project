@@ -53,11 +53,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    'user.apps.UserConfig',
-    'oauth.apps.OauthConfig',
-    'areas.apps.AreasConfig',
-    'contents.apps.ContentsConfig',
-    'goods.apps.GoodsConfig',
+    'user.apps.UserConfig',     # 用户模块
+    'oauth.apps.OauthConfig',   # QQ登录认证模块
+    'areas.apps.AreasConfig',   # 省市区模块
+    'contents.apps.ContentsConfig', # 首页模块
+    'goods.apps.GoodsConfig',       # 商品模块
+    'carts.apps.CartsConfig',       # 购物车模块
+    'orders.apps.OrdersConfig',     # 订单模块
 ]
 
 MIDDLEWARE = [
