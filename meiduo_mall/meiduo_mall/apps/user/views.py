@@ -17,6 +17,7 @@ from celery_tasks.send_email.tasks import send_verify_email
 from .utils import generate_email_verify_url, check_out_user_email
 from meiduo_mall.utils.response_code import RETCODE
 from meiduo_mall.utils.views import LoginRequiredView
+from carts.utils import merge_cart_cookie_to_redis
 
 logger = logging.getLogger('django')
 
@@ -185,6 +186,8 @@ class LoginView(View):
         # return http.HttpResponse('登录成功去到首页')
         # response = redirect('/')  # 重定向到首页
         response = redirect(request.GET.get('next') or '/')
+        # 调用合并购物车函数
+        merge_cart_cookie_to_redis(request, response)
         # if remembered is None:
         #     response.set_cookie('username', user.username, max_age=None)  # cookie过期时间指定为None代表会话结束
         # else:

@@ -12,6 +12,7 @@ from .models import OAuthQQUser
 from QQLoginTool.QQtool import OAuthQQ
 from meiduo_mall.utils.response_code import RETCODE
 from .utils import generate_openid_sign,check_out_openid
+from carts.utils import merge_cart_cookie_to_redis
 
 # 指定日志输出器为django中 的日志输出器
 logger = logging.getLogger('django')
@@ -91,6 +92,8 @@ class QQUserAuthView(View):
             login(request,user)
             # 重定向到指定来源
             response = redirect(request.GET.get('state') or '/')
+            # 调用合并购物车函数
+            merge_cart_cookie_to_redis(request, response)
             # 将用户信息保存到cookie
             # set_cookie(self, key, value='', max_age=None, expires=None, path='/',domain=None, secure=False, httponly=False):
             response.set_cookie('username',user.username,max_age=settings.SESSION_COOKIE_AGE)
