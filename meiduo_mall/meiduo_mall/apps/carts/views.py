@@ -227,10 +227,10 @@ class CartsView(View):
         cart_sku = {
             'id': sku.id,
             'name': sku.name,
-            'selected': str(selected),
-            'price': str(sku.price),
+            'selected': selected,
+            'price': sku.price,
             'default_image_url': sku.default_image.url,
-            'amount': str(sku.price * count),
+            'amount': sku.price * count,
             'count': count
         }
         # 创建响应对象
@@ -306,5 +306,50 @@ class CartsView(View):
             carts_str = base64.b64encode(pickle.dumps(carts_dict)).decode()
             response.set_cookie('carts',carts_str)
 
+        return response
+
+
+class CartsSelectedAllView(View):
+    def put(self,request):  # put(this.host + '/carts/selection/', {selected}   carts.js 请求内容
+        # 接收
+        json_dict = json.loads(request.body.decode())
+        selected = json_dict.get('selected')  # True or False  全选的状态 True 表示全选，False 表示全不选
+        # 校验（判断是否：非正常请求）
+        if isinstance(selected,bool) is False:
+            return http.HttpResponseForbidden(' error selected status')
+        response = http.JsonResponse({'code': RETCODE.OK, 'errmsg': '购物车全选成功'})
+        user = request.user
+        if user.is_authenticated:   # 登录用户
+            redis_cli = get_redis_connection('carts')
+            # redis管道对象要灵活使用，常用于写入数据。如果使用redis取数据，且后面会用到，则不能使用管道
+            if selected: # 全选
+                car_dict = redis_cli.hgetall(f'carts_{user.id}')   # {sku_id:count,...sku_id:count}
+                #  SADD KEY_NAME VALUE1..VALUEN   pl.sadd(key_name,value1,value2,value3...)
+                #  *car_dict.keys() = p1,p2,p3...
+                redis_cli.sadd(f'selected_{user.id}',*car_dict.keys())
+            else: # 表示全不选  删除存储selected状态的set集合 selected_user.id
+                redis_cli.delete(f'selected_{user.id}')
+        else:  # 未登录用户
+            carts_str = request.COOKIES.get('carts')
+            if carts_str:
+                carts_dict = pickle.loads(base64.b64decode(carts_str.encode()))
+                # 核心思想 修改购物车每个sku_id小字典中的selected的值
+                # 讲义方法
+                if selected:
+                    for sku_dict in carts_dict.values():
+                        sku_dict['selected'] = selected
+                else:
+                    for sku_dict in carts_dict.values():
+                        sku_dict['selected'] = selected
+                # if selected:
+                #     for sku_id in carts_dict.keys():
+                #         carts_dict[sku_id]['selected'] = selected
+                # else:
+                #     for sku_id in carts_dict.keys():
+                #         carts_dict[sku_id]['selected'] = selected
+                carts_str = base64.b64encode(pickle.dumps(carts_dict)).decode()
+                response.set_cookie('carts',carts_str)
+            else:
+                return http.HttpResponseForbidden('does not have carts data')
         return response
 
